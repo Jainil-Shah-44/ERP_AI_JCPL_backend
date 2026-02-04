@@ -6,6 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import uuid
 
+ALGORITHM = "HS256"
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 REFRESH_TOKEN_EXPIRE_DAYS = 7
@@ -19,16 +21,24 @@ def verify_password(password, hash):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.utcnow() + timedelta(
+        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+    )
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm="HS256")
+
+    return jwt.encode(
+        to_encode,
+        settings.JWT_SECRET,   # 🔑 SAME SECRET
+        algorithm=ALGORITHM,
+    )
+
 
 def decode_access_token(token: str):
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET,
-            algorithms=["HS256"]
+            settings.JWT_SECRET,   # 🔑 SAME SECRET
+            algorithms=[ALGORITHM],
         )
         return payload
     except JWTError:
