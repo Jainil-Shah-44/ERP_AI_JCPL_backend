@@ -10,6 +10,7 @@ from app.api.routers import (
     raw_material,
     user
 )
+from app.api.purchase_requisition import router as pr_router
 
 api_router = APIRouter()
 
@@ -22,3 +23,6 @@ api_router.include_router(vendor.router)
 api_router.include_router(warehouse.router)
 api_router.include_router(raw_material.router)
 api_router.include_router(user.router)
+
+
+api_router.include_router(pr_router)
