@@ -11,6 +11,7 @@ from app.api.routers import (
     user
 )
 from app.api.purchase_requisition import router as pr_router
+from app.api.request_for_quotation import router as rfq_router
 
 api_router = APIRouter()
 
@@ -26,3 +27,4 @@ api_router.include_router(user.router)
 
 
 api_router.include_router(pr_router)
+api_router.include_router(rfq_router)
