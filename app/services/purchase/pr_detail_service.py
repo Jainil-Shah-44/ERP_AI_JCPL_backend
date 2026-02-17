@@ -25,6 +25,8 @@ def get_pr_detail(db: Session, pr_id, user):
     return {
         "id": pr.id,
         "pr_number": pr.pr_number,
+        "factory_id": pr.factory_id,
+        "warehouse_id": pr.warehouse_id,
         "department": pr.department,
         "priority": pr.priority,
         "required_by_date": pr.required_by_date,
