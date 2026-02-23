@@ -20,7 +20,6 @@ router = APIRouter(
 from app.services.purchase.pr_detail_service import get_pr_detail,get_pr_attachments
 from app.schemas.purchase.pr_update import PRUpdate
 from app.services.purchase.pr_update_service import update_pr
-from app.services.purchase.rfq_detail_service import get_rfq_vendors
 
 
 
@@ -131,13 +130,3 @@ def update_pr_endpoint(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{rfq_id}/vendors")
-def get_vendors(
-    rfq_id: UUID,
-    db: Session = Depends(get_db),
-    user=Depends(get_current_user)
-):
-    try:
-        return get_rfq_vendors(db, rfq_id, user)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))

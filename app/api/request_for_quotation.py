@@ -16,6 +16,7 @@ from app.services.purchase.po_from_rfq_service import create_po_from_rfq_selecti
 from app.services.purchase.rfq_list_service import get_rfq_list
 from app.services.purchase.rfq_detail_service import get_rfq_detail
 from app.services.purchase.rfq_cancel_service import cancel_rfq
+from app.services.purchase.rfq_detail_service import get_rfq_vendors
 
 
 
@@ -112,4 +113,15 @@ def cancel_rfq_endpoint(
         return cancel_rfq(db, rfq_id, user)
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{rfq_id}/vendors")
+def get_vendors(
+    rfq_id: UUID,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    try:
+        return get_rfq_vendors(db, rfq_id, user)
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
