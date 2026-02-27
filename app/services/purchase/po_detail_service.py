@@ -1,16 +1,25 @@
 from sqlalchemy.orm import Session
 from app.models.purchase.purchase_order import PurchaseOrder, PurchaseOrderItem
+from app.models.vendor import Vendor
 
 
 def get_po_detail(db: Session, po_id, user):
 
-    po = db.query(PurchaseOrder).filter(
-        PurchaseOrder.id == po_id,
-        PurchaseOrder.company_id == user.company_id
-    ).first()
+    po = (
+        db.query(PurchaseOrder)
+        .filter(
+            PurchaseOrder.id == po_id,
+            PurchaseOrder.company_id == user.company_id
+        )
+        .first()
+    )
 
     if not po:
         raise ValueError("PO not found")
+
+    vendor = db.query(Vendor).filter(
+        Vendor.id == po.vendor_id
+    ).first()
 
     items = db.query(PurchaseOrderItem).filter(
         PurchaseOrderItem.po_id == po.id
@@ -21,9 +30,11 @@ def get_po_detail(db: Session, po_id, user):
         "po_number": po.po_number,
         "po_date": po.po_date,
         "vendor_id": po.vendor_id,
+        "vendor_name": vendor.name if vendor else None,
         "status": po.status,
         "total_amount": float(po.total_amount or 0),
         "created_at": po.created_at,
+        "source_rfq_id": po.source_rfq_id,
         "items": [
             {
                 "id": item.id,

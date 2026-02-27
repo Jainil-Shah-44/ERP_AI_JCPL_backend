@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, ForeignKey
+from sqlalchemy import Column, String, Text, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from app.db.base import MasterBase
 
@@ -13,6 +13,12 @@ class RawMaterial(MasterBase):
     category_id = Column(ForeignKey("item_category.id"), nullable=False)
     group_id = Column(ForeignKey("group_master.id"), nullable=False)
     unit_id = Column(ForeignKey("unit.id"), nullable=False)
+
+    #new fields
+    hsn_code = Column(String(20))
+    gst_rate = Column(Numeric(5, 2))
+    reorder_level = Column(Numeric(15, 3))
+    minimum_order_qty = Column(Numeric(15, 3))
 
     category = relationship("ItemCategory")
     group = relationship("ItemGroup")

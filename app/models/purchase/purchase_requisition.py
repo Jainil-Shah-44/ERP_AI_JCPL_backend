@@ -29,7 +29,7 @@ class PurchaseRequisition(Base):
     priority = Column(String(20), default="NORMAL")
     status = Column(String(30), default="DRAFT")
 
-    required_by_date = Column(Date)
+    #required_by_date = Column(Date)
     remarks = Column(Text)
 
     has_attachment = Column(Boolean, default=False)
@@ -61,5 +61,6 @@ class PurchaseRequisitionItem(Base):
 
     estimated_rate = Column(Numeric(14, 2))
     estimated_amount = Column(Numeric(16, 2))
+    required_by_date = Column(Date,nullable=True)
 
     status = Column(String(30), default="PENDING")

@@ -29,7 +29,7 @@ def get_pr_detail(db: Session, pr_id, user):
         "warehouse_id": pr.warehouse_id,
         "department": pr.department,
         "priority": pr.priority,
-        "required_by_date": pr.required_by_date,
+        #"required_by_date": pr.required_by_date,
         "remarks": pr.remarks,
         "status": pr.status,
         "created_at": pr.created_at,
@@ -43,6 +43,7 @@ def get_pr_detail(db: Session, pr_id, user):
                 "approved_qty": float(i.approved_qty or 0),
                 "unit_id": i.unit_id,
                 "estimated_rate": float(i.estimated_rate or 0),
+                "required_by_date": i.required_by_date,
                 "status": i.status
             }
             for i in items

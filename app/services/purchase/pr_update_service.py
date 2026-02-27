@@ -18,7 +18,7 @@ def update_pr(db: Session, pr_id, payload, user):
 
     pr.department = payload.department
     pr.priority = payload.priority
-    pr.required_by_date = payload.required_by_date
+    #pr.required_by_date = payload.required_by_date
     pr.remarks = payload.remarks
 
     # Remove old items
@@ -37,6 +37,7 @@ def update_pr(db: Session, pr_id, payload, user):
                 requested_qty=item.requested_qty,
                 unit_id=item.unit_id,
                 estimated_rate=item.estimated_rate,
+                required_by_date=item.required_by_date,
                 status="PENDING"
             )
         )
