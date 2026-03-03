@@ -26,7 +26,7 @@ def create_pr(db: Session, payload, user):
         factory_id=payload.factory_id,
         warehouse_id=payload.warehouse_id,
         priority=payload.priority,
-        required_by_date=payload.required_by_date,
+        #required_by_date=payload.required_by_date,
         remarks=payload.remarks,
         created_by=user.id
     )
@@ -44,6 +44,7 @@ def create_pr(db: Session, payload, user):
                 requested_qty=item.requested_qty,
                 unit_id=item.unit_id,
                 estimated_rate=item.estimated_rate,
+                required_by_date=item.required_by_date,
                 estimated_amount=(
                     item.requested_qty * item.estimated_rate
                     if item.estimated_rate else None

@@ -88,3 +88,6 @@ celerybeat.pid
 #################################
 pytest.ini
 test-results/
+
+
+**/uploads/
