@@ -25,7 +25,7 @@ def get_pr_list(db: Session, user, status=None, page=1, limit=20):
             "id": pr.id,
             "pr_number": pr.pr_number,
             "department": pr.department,
-            "required_by_date": pr.required_by_date,
+            #"required_by_date": pr.required_by_date,
             "priority": pr.priority,
             "status": pr.status,
             "created_at": pr.created_at

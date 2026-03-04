@@ -19,6 +19,6 @@ class PRCreate(BaseModel):
     warehouse_id: UUID | None = None
     department: str | None = None
     priority: str = "NORMAL"
-    required_by_date: date | None = None
+    #required_by_date: date | None = None
     remarks: str | None = None
     items: list[PRItemCreate]

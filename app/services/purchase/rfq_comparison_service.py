@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from app.models.purchase.request_for_quotation_item import RequestForQuotationItem
 from app.models.purchase.request_for_quotation_vendor import RequestForQuotationVendor
 from app.models.purchase.rfq_vendor_quotation import RFQVendorQuotation
-
+from app.models.vendor import Vendor
 
 def get_rfq_comparison_matrix(db: Session, rfq_id, user):
 
@@ -18,6 +18,8 @@ def get_rfq_comparison_matrix(db: Session, rfq_id, user):
             RequestForQuotationVendor.id.label("rfq_vendor_id"),
             RequestForQuotationVendor.vendor_id,
 
+            Vendor.name.label("vendor_name"),
+
             RFQVendorQuotation.quoted_rate,
             RFQVendorQuotation.lead_time_days
         )
@@ -29,7 +31,14 @@ def get_rfq_comparison_matrix(db: Session, rfq_id, user):
             RequestForQuotationVendor,
             RequestForQuotationVendor.id == RFQVendorQuotation.rfq_vendor_id
         )
-        .filter(RequestForQuotationItem.rfq_id == rfq_id)
+        .join(
+            Vendor,
+            Vendor.id == RequestForQuotationVendor.vendor_id
+        )
+        .filter(
+            RequestForQuotationItem.rfq_id == rfq_id,
+            #RequestForQuotationItem.company_id == user.company_id
+        )
         .all()
     )
 
@@ -39,7 +48,6 @@ def get_rfq_comparison_matrix(db: Session, rfq_id, user):
             "items": []
         }
 
-    # 🔁 Transform flat rows → grouped matrix
     matrix = {}
 
     for row in rows:
@@ -59,8 +67,9 @@ def get_rfq_comparison_matrix(db: Session, rfq_id, user):
         matrix[item_id]["quotations"].append({
             "rfq_vendor_id": row.rfq_vendor_id,
             "vendor_id": row.vendor_id,
-            "quoted_rate": float(row.quoted_rate),
-            "lead_time_days": row.lead_time_days
+            "vendor_name": row.vendor_name,   # ✅ ADDED
+            "quoted_rate": float(row.quoted_rate or 0),
+            "lead_time_days": row.lead_time_days or 0
         })
 
     return {

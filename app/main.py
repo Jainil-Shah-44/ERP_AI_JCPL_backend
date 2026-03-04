@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth, protected, router
 from app.api.purchase_requisition import router as pr_router
 from app.api.request_for_quotation import router as rfq_router
-
+from app.api.purchase_order import router as po_router
 
 
 app = FastAPI(title="ERP Backend")
@@ -21,6 +21,7 @@ app.include_router(protected.router)
 app.include_router(router.api_router)
 app.include_router(pr_router)
 app.include_router(rfq_router)
+app.include_router(po_router)
 
 
 @app.get("/")

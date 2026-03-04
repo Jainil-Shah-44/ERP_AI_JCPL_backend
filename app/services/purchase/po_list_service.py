@@ -1,10 +1,13 @@
 from app.models.purchase.purchase_order import PurchaseOrder
+from app.models.vendor import Vendor
 
 
 def get_po_list(db, user, status=None, page=1, limit=20):
 
-    query = db.query(PurchaseOrder).filter(
-        PurchaseOrder.company_id == user.company_id
+    query = (
+        db.query(PurchaseOrder, Vendor)
+        .join(Vendor, Vendor.id == PurchaseOrder.vendor_id)
+        .filter(PurchaseOrder.company_id == user.company_id)
     )
 
     if status:
@@ -25,10 +28,13 @@ def get_po_list(db, user, status=None, page=1, limit=20):
             "po_number": po.po_number,
             "po_date": po.po_date,
             "vendor_id": po.vendor_id,
-            "total_amount": po.total_amount,
-            "status": po.status
+            "vendor_name": vendor.name,
+            "total_amount": float(po.total_amount or 0),
+            "status": po.status,
+            "source_rfq_id": po.source_rfq_id,
+            "created_at": po.created_at
         }
-        for po in records
+        for po, vendor in records
     ]
 
     return {
