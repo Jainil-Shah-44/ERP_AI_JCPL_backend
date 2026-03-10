@@ -13,6 +13,7 @@ class RawMaterial(MasterBase):
     category_id = Column(ForeignKey("item_category.id"), nullable=False)
     group_id = Column(ForeignKey("group_master.id"), nullable=False)
     unit_id = Column(ForeignKey("unit.id"), nullable=False)
+    unit_name = Column(String(50))
 
     #new fields
     hsn_code = Column(String(20))

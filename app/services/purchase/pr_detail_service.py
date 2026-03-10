@@ -4,6 +4,7 @@ from app.models.purchase.purchase_requisition import PurchaseRequisitionItem
 from app.models.purchase.purchase_requisition_attachment import PurchaseRequisitionAttachment
 from app.models.factory import Factory
 from app.models.warehouse import Warehouse
+from app.models.unit import Unit
 
 def get_pr_detail(db: Session, pr_id, user):
 
@@ -28,10 +29,15 @@ def get_pr_detail(db: Session, pr_id, user):
     pr, factory_name, warehouse_name = result
 
     # ---------------- Items ----------------
-    items = db.query(PurchaseRequisitionItem).filter(
-        PurchaseRequisitionItem.pr_id == pr.id
-    ).all()
-
+    items = (
+    db.query(
+        PurchaseRequisitionItem,
+        Unit.unit_code.label("unit_name")
+    )
+    .outerjoin(Unit, Unit.id == PurchaseRequisitionItem.unit_id)
+    .filter(PurchaseRequisitionItem.pr_id == pr.id)
+    .all()
+)
     # ---------------- Attachments ----------------
     attachments = db.query(PurchaseRequisitionAttachment).filter(
         PurchaseRequisitionAttachment.pr_id == pr.id
@@ -56,14 +62,24 @@ def get_pr_detail(db: Session, pr_id, user):
                 "material_id": i.material_id,
                 "material_code": i.material_code,
                 "material_name": i.material_name,
+
                 "requested_qty": float(i.requested_qty),
                 "approved_qty": float(i.approved_qty or 0),
+
                 "unit_id": i.unit_id,
+                "unit_name":unit_name,
                 "estimated_rate": float(i.estimated_rate or 0),
+
+                "department_id": i.department_id,
+                "department_name": i.department_name,
+
+                "description": i.description,
+                "remarks": i.remarks,
+
                 "required_by_date": i.required_by_date,
                 "status": i.status
             }
-            for i in items
+            for i,unit_name in items
         ],
 
         "attachments": [

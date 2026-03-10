@@ -46,6 +46,7 @@ class RawMaterialRead(MasterReadBase):
     category_id: UUID
     group_id: UUID
     unit_id: UUID
+    unit_name: str | None = None
 
     # ✅ NEW FIELDS
     hsn_code: Optional[str]

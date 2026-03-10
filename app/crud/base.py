@@ -64,7 +64,7 @@ class CRUDBase(Generic[ModelType]):
         *,
         company_id: UUID,
         skip: int = 0,
-        limit: int = 100,
+        limit: int = 10000,
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[ModelType]:
         query = (

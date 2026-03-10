@@ -50,6 +50,9 @@ class PurchaseRequisitionItem(Base):
         nullable=False
     )
 
+    pr_number = Column(String(50))   # NEW
+
+
     material_id = Column(UUID(as_uuid=True), nullable=False)
     material_code = Column(String(50))
     material_name = Column(String(255))
@@ -61,6 +64,13 @@ class PurchaseRequisitionItem(Base):
 
     estimated_rate = Column(Numeric(14, 2))
     estimated_amount = Column(Numeric(16, 2))
+
+    department_id = Column(UUID(as_uuid=True), ForeignKey("department.id"))  # NEW
+    department_name = Column(String(100))  # NEW
+
+    description = Column(Text)
+    remarks = Column(Text)
+    
     required_by_date = Column(Date,nullable=True)
 
     status = Column(String(30), default="PENDING")

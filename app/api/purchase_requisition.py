@@ -21,7 +21,8 @@ from app.services.purchase.pr_detail_service import get_pr_detail,get_pr_attachm
 from app.schemas.purchase.pr_update import PRUpdate
 from app.services.purchase.pr_update_service import update_pr
 
-
+from app.schemas.purchase.pr_excel_import import PRExcelImportRequest
+from app.services.purchase.pr_excel_import_service import import_pr_from_excel
 
 
 @router.post("/", status_code=201)
@@ -129,4 +130,23 @@ def update_pr_endpoint(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.post("/import-excel")
+def import_excel_pr(
+    payload: PRExcelImportRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user)
+):
 
+    pr = import_pr_from_excel(
+        db,
+        payload.rows,
+        current_user,
+        current_user.company_id,
+        current_user.company_code
+    )
+
+    return {
+        "message": "PR created successfully",
+        "pr_id": pr.id,
+        "pr_number": pr.pr_number
+    }

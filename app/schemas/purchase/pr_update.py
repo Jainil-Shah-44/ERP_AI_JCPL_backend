@@ -10,6 +10,11 @@ class PRItemUpdate(BaseModel):
     material_code: str
     material_name: str
     requested_qty: Decimal
+    department_id: UUID
+
+    description: str | None = None
+    remarks: str | None = None
+    
     required_by_date: date | None = None
     unit_id: UUID
     estimated_rate: Decimal | None = None

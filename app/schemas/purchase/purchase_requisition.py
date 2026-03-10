@@ -11,6 +11,10 @@ class PRItemCreate(BaseModel):
     requested_qty: Decimal
     unit_id: UUID
     estimated_rate: Decimal | None = None
+    department_id: UUID
+
+    description: str | None = None
+    remarks: str | None = None
     required_by_date: date | None = None
 
 
