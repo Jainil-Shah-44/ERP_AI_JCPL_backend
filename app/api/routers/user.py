@@ -13,7 +13,7 @@ from app.crud.user import (
 )
 
 router = APIRouter(
-    prefix="/masters/users",
+    prefix="/api/masters/users",
     tags=["User Master"]
 )
 

@@ -14,7 +14,7 @@ from app.services.purchase.purchase_requisition_attachment_service import (
 )
 from app.services.purchase.pr_list_service import get_pr_list
 router = APIRouter(
-    prefix="/purchase-requisition",
+    prefix="/api/purchase-requisition",
     tags=["Purchase Requisition"]
 )
 from app.services.purchase.pr_detail_service import get_pr_detail,get_pr_attachments

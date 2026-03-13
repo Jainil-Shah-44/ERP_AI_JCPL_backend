@@ -6,7 +6,7 @@ from app.crud import group as crud
 from app.schemas.group import GroupCreate, GroupUpdate, GroupRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/groups", tags=["Group"])
+router = APIRouter(prefix="/api/masters/groups", tags=["Group"])
 
 @router.post("/", response_model=GroupRead, status_code=201)
 def create(payload: GroupCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

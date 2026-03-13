@@ -6,7 +6,7 @@ from app.crud import factory as crud
 from app.schemas.factory import FactoryCreate, FactoryUpdate, FactoryRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/factories", tags=["Factory"])
+router = APIRouter(prefix="/api/masters/factories", tags=["Factory"])
 
 @router.post("/", response_model=FactoryRead, status_code=201)
 def create(payload: FactoryCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

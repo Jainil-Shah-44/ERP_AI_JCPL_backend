@@ -10,7 +10,7 @@ app = FastAPI(title="ERP Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000","http://103.196.187.61"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

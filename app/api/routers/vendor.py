@@ -6,7 +6,7 @@ from app.crud import vendor as crud
 from app.schemas.vendor import VendorCreate, VendorUpdate, VendorRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/vendors", tags=["Vendor"])
+router = APIRouter(prefix="/api/masters/vendors", tags=["Vendor"])
 
 @router.post("/", response_model=VendorRead, status_code=201)
 def create(payload: VendorCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

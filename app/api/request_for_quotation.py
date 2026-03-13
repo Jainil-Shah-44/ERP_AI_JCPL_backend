@@ -20,7 +20,7 @@ from app.services.purchase.rfq_detail_service import get_rfq_vendors
 
 
 
-router = APIRouter(prefix="/rfq", tags=["RFQ"])
+router = APIRouter(prefix="/api/rfq", tags=["RFQ"])
 
 
 @router.post("/")

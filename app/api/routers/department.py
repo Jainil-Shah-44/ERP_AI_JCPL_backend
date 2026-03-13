@@ -6,7 +6,7 @@ from app.crud import department as crud
 from app.schemas.department import DepartmentCreate, DepartmentUpdate, DepartmentRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/departments", tags=["Department"])
+router = APIRouter(prefix="/api/masters/departments", tags=["Department"])
 
 @router.post("/", response_model=DepartmentRead, status_code=201)
 def create(payload: DepartmentCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

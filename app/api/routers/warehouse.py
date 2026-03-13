@@ -6,7 +6,7 @@ from app.crud import warehouse as crud
 from app.schemas.warehouse import WarehouseCreate, WarehouseUpdate, WarehouseRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/warehouses", tags=["Warehouse"])
+router = APIRouter(prefix="/api/masters/warehouses", tags=["Warehouse"])
 
 @router.post("/", response_model=WarehouseRead, status_code=201)
 def create(payload: WarehouseCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

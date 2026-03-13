@@ -6,7 +6,7 @@ from app.crud import raw_material as crud
 from app.schemas.raw_material import RawMaterialCreate, RawMaterialUpdate, RawMaterialRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/raw-materials", tags=["Raw Material"])
+router = APIRouter(prefix="/api/masters/raw-materials", tags=["Raw Material"])
 
 @router.post("/", response_model=RawMaterialRead, status_code=201)
 def create(payload: RawMaterialCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

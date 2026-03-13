@@ -6,7 +6,7 @@ from app.crud import category as crud
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/categories", tags=["Category"])
+router = APIRouter(prefix="/api/masters/categories", tags=["Category"])
 
 @router.post("/", response_model=CategoryRead, status_code=201)
 def create(payload: CategoryCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

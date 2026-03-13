@@ -12,7 +12,7 @@ import uuid
 
 
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 @router.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):

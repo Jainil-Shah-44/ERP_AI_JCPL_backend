@@ -6,7 +6,7 @@ from app.crud import unit as crud
 from app.schemas.unit import UnitCreate, UnitUpdate, UnitRead
 from app.api.deps import get_db, get_current_user
 
-router = APIRouter(prefix="/masters/units", tags=["Unit"])
+router = APIRouter(prefix="/api/masters/units", tags=["Unit"])
 
 @router.post("/", response_model=UnitRead, status_code=201)
 def create(payload: UnitCreate, db: Session = Depends(get_db), user=Depends(get_current_user)):

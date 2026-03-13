@@ -9,7 +9,7 @@ from app.services.purchase.po_status_service import release_po
 from app.services.purchase.po_status_service import cancel_po
 
 
-router = APIRouter(prefix="/purchase-order", tags=["Purchase Order"])
+router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"])
 
 
 @router.get("/")
