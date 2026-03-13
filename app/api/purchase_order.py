@@ -7,9 +7,9 @@ from app.services.purchase.po_list_service import get_po_list
 from app.services.purchase.po_detail_service import get_po_detail
 from app.services.purchase.po_status_service import release_po
 from app.services.purchase.po_status_service import cancel_po
+from app.api.dependencies.permission import require_permission
 
-
-router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"])
+router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"],dependencies=[Depends(require_permission("PO_APPROVE"))])
 
 
 @router.get("/")

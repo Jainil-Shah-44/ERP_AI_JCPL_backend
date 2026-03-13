@@ -13,17 +13,19 @@ from app.services.purchase.purchase_requisition_attachment_service import (
     save_pr_attachment
 )
 from app.services.purchase.pr_list_service import get_pr_list
-router = APIRouter(
-    prefix="/api/purchase-requisition",
-    tags=["Purchase Requisition"]
-)
 from app.services.purchase.pr_detail_service import get_pr_detail,get_pr_attachments
 from app.schemas.purchase.pr_update import PRUpdate
 from app.services.purchase.pr_update_service import update_pr
 
 from app.schemas.purchase.pr_excel_import import PRExcelImportRequest
 from app.services.purchase.pr_excel_import_service import import_pr_from_excel
+from app.api.dependencies.permission import require_permission
 
+router = APIRouter(
+    prefix="/api/procurement/purchase-requisition",
+    tags=["Purchase Requisition"],
+    dependencies=[Depends(require_permission("PURCHASE_CREATE"))]
+)
 
 @router.post("/", status_code=201)
 def create_purchase_requisition(

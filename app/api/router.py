@@ -12,7 +12,7 @@ from app.api.routers import (
 )
 from app.api.purchase_requisition import router as pr_router
 from app.api.request_for_quotation import router as rfq_router
-
+from app.api.routers.role import router as role_router
 api_router = APIRouter()
 
 api_router.include_router(department.router)
@@ -25,6 +25,7 @@ api_router.include_router(warehouse.router)
 api_router.include_router(raw_material.router)
 api_router.include_router(user.router)
 
+api_router.include_router(role_router)
 
 api_router.include_router(pr_router)
 api_router.include_router(rfq_router)

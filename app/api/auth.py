@@ -9,7 +9,7 @@ from app.core.refresh import save_refresh_token, revoke_refresh_token
 from app.models.refresh_token import RefreshToken
 from datetime import datetime
 import uuid
-
+from app.core.permissions import get_user_permissions
 
 
 router = APIRouter(prefix="/api/auth", tags=["Auth"])
@@ -26,9 +26,12 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # Access token
+    permissions = list(get_user_permissions(db, user.id))
+
     access_token = create_access_token({
         "user_id": str(user.id),
-        "company_code": user.company_code
+        "company_code": user.company_code,
+        "permissions": permissions
     })
 
     # Refresh token (UUID, not JWT)
@@ -38,6 +41,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
     response = JSONResponse({
         "access_token": access_token,
         "token_type": "bearer",
+        "permissions": permissions,
         "user": {
             "id": str(user.id),
             "username": user.username,

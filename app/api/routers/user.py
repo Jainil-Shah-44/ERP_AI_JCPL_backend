@@ -11,10 +11,13 @@ from app.crud.user import (
     update_user,
     delete_user,
 )
+from app.api.dependencies.permission import require_permission
+
 
 router = APIRouter(
     prefix="/api/masters/users",
-    tags=["User Master"]
+    tags=["User Master"],
+    dependencies=[Depends(require_permission("USER_MANAGE"))]
 )
 
 @router.post("/", response_model=UserRead, status_code=201)

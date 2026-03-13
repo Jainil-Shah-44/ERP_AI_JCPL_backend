@@ -17,6 +17,7 @@ def get_current_user(
         )
 
     user_id = payload.get("user_id")
+    permissions = payload.get("permissions", [])
     if user_id is None:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
@@ -27,4 +28,7 @@ def get_current_user(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
+    # attach permissions
+    user.permissions = permissions
+    
     return user

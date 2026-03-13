@@ -23,7 +23,7 @@ class UserRead(BaseModel):
     username: str
     email: Optional[str]
     mobile_number: Optional[str]
-    role: str
+    role: Optional[str]
     location: Optional[str]
     company_code: str
     is_active: bool

@@ -17,10 +17,10 @@ from app.services.purchase.rfq_list_service import get_rfq_list
 from app.services.purchase.rfq_detail_service import get_rfq_detail
 from app.services.purchase.rfq_cancel_service import cancel_rfq
 from app.services.purchase.rfq_detail_service import get_rfq_vendors
+from app.api.dependencies.permission import require_permission
 
 
-
-router = APIRouter(prefix="/api/rfq", tags=["RFQ"])
+router = APIRouter(prefix="/api/rfq", tags=["RFQ"],dependencies=[Depends(require_permission("PURCHASE_CREATE"))])
 
 
 @router.post("/")
