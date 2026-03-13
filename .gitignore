@@ -88,3 +88,9 @@ celerybeat.pid
 #################################
 pytest.ini
 test-results/
+
+# Ignore everything inside uploads
+uploads/*
+
+# But keep the folder itself
+!uploads/.gitkeep
