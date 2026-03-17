@@ -45,8 +45,16 @@ def save_pr_attachment(
     )
     os.makedirs(pr_folder, exist_ok=True)
 
-    file_path = os.path.join(pr_folder, file.filename)
+    relative_path = os.path.join(
+        f"company_{user.company_id}",
+        "purchase_requisition",
+        str(pr_id),
+        file.filename
+    )
 
+    file_path = os.path.join(UPLOAD_BASE_PATH, relative_path)
+
+    
     # 💾 Save file
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -54,7 +62,7 @@ def save_pr_attachment(
     attachment = PurchaseRequisitionAttachment(
         pr_id=pr_id,
         file_name=file.filename,
-        file_path=file_path,
+        file_path=relative_path,
         file_type=file.content_type,
         file_size=os.path.getsize(file_path),
         uploaded_by=user.id
