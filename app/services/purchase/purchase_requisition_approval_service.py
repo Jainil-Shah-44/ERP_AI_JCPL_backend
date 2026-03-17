@@ -1,10 +1,10 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
+
 from app.models.purchase.purchase_requisition import (
     PurchaseRequisition,
     PurchaseRequisitionItem
 )
-from app.models.purchase.purchase_requisition_approval import PurchaseRequisitionApproval
 
 
 def act_on_pr(
@@ -14,18 +14,6 @@ def act_on_pr(
     action: str,
     remarks: str | None = None
 ):
-    approval = db.query(PurchaseRequisitionApproval).filter(
-        PurchaseRequisitionApproval.pr_id == pr_id,
-        PurchaseRequisitionApproval.approver_id == user.id,
-        PurchaseRequisitionApproval.status == "PENDING"
-    ).first()
-
-    if not approval:
-        raise ValueError("No pending approval found for this user")
-
-    approval.status = action
-    approval.action_date = datetime.utcnow()
-    approval.remarks = remarks
 
     pr = db.query(PurchaseRequisition).filter(
         PurchaseRequisition.id == pr_id,
@@ -35,13 +23,19 @@ def act_on_pr(
     if not pr:
         raise ValueError("PR not found")
 
+    if pr.status != "SUBMITTED":
+        raise ValueError("Only submitted PR can be approved or rejected")
+
     pr_items = db.query(PurchaseRequisitionItem).filter(
         PurchaseRequisitionItem.pr_id == pr.id
     ).all()
 
     if not pr_items:
-        raise ValueError("No PR items found for this PR")
+        raise ValueError("No PR items found")
 
+    # -----------------------------
+    # Apply action
+    # -----------------------------
     if action == "REJECT":
         pr.status = "REJECTED"
         for item in pr_items:
@@ -52,7 +46,12 @@ def act_on_pr(
         for item in pr_items:
             item.status = "APPROVED"
 
-    db.flush()
+    # -----------------------------
+    # Optional audit log (good practice)
+    # -----------------------------
+    pr.approved_by = user.id
+    pr.approved_at = datetime.utcnow()
+
     db.commit()
 
     return {
