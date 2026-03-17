@@ -20,10 +20,10 @@ from app.services.purchase.rfq_detail_service import get_rfq_vendors
 from app.api.dependencies.permission import require_permission
 
 
-router = APIRouter(prefix="/api/rfq", tags=["RFQ"],dependencies=[Depends(require_permission("PURCHASE_CREATE"))])
+router = APIRouter(prefix="/api/rfq", tags=["RFQ"])
 
 
-@router.post("/")
+@router.post("/",dependencies=[Depends(require_permission("RFQ_CREATE"))])
 def create_rfq(
     payload: RFQCreate,
     db: Session = Depends(get_db),
@@ -36,7 +36,7 @@ def create_rfq(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/{rfq_id}/invite-vendors")
+@router.post("/{rfq_id}/invite-vendors",dependencies=[Depends(require_permission("RFQ_INVITE_VENDOR"))])
 def invite_vendors(
     rfq_id: UUID,
     vendor_ids: List[UUID],
@@ -61,7 +61,7 @@ def submit_quotation(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.get("/{rfq_id}/comparison")
+@router.get("/{rfq_id}/comparison",dependencies=[Depends(require_permission("RFQ_COMPARISON"))])
 def get_rfq_comparison(
     rfq_id: UUID,
     db: Session = Depends(get_db),
@@ -69,7 +69,7 @@ def get_rfq_comparison(
 ):
     return get_rfq_comparison_matrix(db, rfq_id, user)
 
-@router.post("/{rfq_id}/create-po")
+@router.post("/{rfq_id}/create-po",dependencies=[Depends(require_permission("RFQ_CREATE_PO"))])
 def create_po_from_rfq(
     payload: POFromRFQCreate,
     db: Session = Depends(get_db),
@@ -81,7 +81,7 @@ def create_po_from_rfq(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
     
-@router.get("/")
+@router.get("/",dependencies=[Depends(require_permission("RFQ_VIEW"))])
 def list_rfq(
     status: str | None = None,
     page: int = 1,

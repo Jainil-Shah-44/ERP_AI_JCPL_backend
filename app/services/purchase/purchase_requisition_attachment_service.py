@@ -7,6 +7,7 @@ from app.models.purchase.purchase_requisition import PurchaseRequisition
 from app.models.purchase.purchase_requisition_attachment import (
     PurchaseRequisitionAttachment
 )
+from app.core.permissions import get_user_permissions
 
 UPLOAD_BASE_PATH = "uploads"
 
@@ -28,6 +29,13 @@ def save_pr_attachment(
     if pr.status != "DRAFT":
         raise ValueError("Cannot upload documents after PR is submitted")
 
+
+    permissions = get_user_permissions(db, user.id)
+
+    if "PR_VIEW_ALL" not in permissions:
+        if pr.created_by != user.id:
+            raise ValueError("You cannot upload attachment to this PR")
+        
     # 📁 Build path
     pr_folder = os.path.join(
         UPLOAD_BASE_PATH,

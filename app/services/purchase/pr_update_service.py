@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from app.models.purchase.purchase_requisition import PurchaseRequisition
 from app.models.purchase.purchase_requisition import PurchaseRequisitionItem
 from app.models.department import Department
-
+from app.core.permissions import get_user_permissions
 
 def update_pr(db: Session, pr_id, payload, user):
 
@@ -18,6 +18,12 @@ def update_pr(db: Session, pr_id, payload, user):
 
     if pr.status != "DRAFT":
         raise ValueError("Only DRAFT PR can be updated")
+    
+    permissions = get_user_permissions(db, user.id)
+
+    if "PR_VIEW_ALL" not in permissions:
+        if pr.created_by != user.id:
+            raise ValueError("You cannot edit this PR")
 
     pr.department = payload.department
     pr.priority = payload.priority

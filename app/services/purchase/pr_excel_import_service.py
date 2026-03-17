@@ -103,6 +103,7 @@ def import_pr_from_excel(db: Session, rows, current_user, company_id, company_co
         pr_number=pr_number,
         pr_date=first.pr_date,
         requested_by=current_user.id,
+        created_by=current_user.id,   # THIS MUST EXIST
         department=first.department,
         factory_id=factory_id,
         warehouse_id=warehouse.id,

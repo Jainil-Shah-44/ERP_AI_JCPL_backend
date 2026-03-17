@@ -24,10 +24,9 @@ from app.api.dependencies.permission import require_permission
 router = APIRouter(
     prefix="/api/procurement/purchase-requisition",
     tags=["Purchase Requisition"],
-    dependencies=[Depends(require_permission("PURCHASE_CREATE"))]
 )
 
-@router.post("/", status_code=201)
+@router.post("/",dependencies=[Depends(require_permission("PR_CREATE"))], status_code=201)
 def create_purchase_requisition(
     payload: PRCreate,
     db: Session = Depends(get_db),
@@ -39,7 +38,7 @@ def create_purchase_requisition(
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/{pr_id}/submit")
+@router.post("/{pr_id}/submit",dependencies=[Depends(require_permission("PR_SUBMIT"))])
 def submit_purchase_requisition(
     pr_id: UUID,
     db: Session = Depends(get_db),
@@ -52,7 +51,7 @@ def submit_purchase_requisition(
         raise HTTPException(status_code=400, detail=str(e))
     
 
-@router.post("/{pr_id}/approve")
+@router.post("/{pr_id}/approve",dependencies=[Depends(require_permission("PR_APPROVE"))])
 def approve_pr(
     pr_id: UUID,
     remarks: str | None = None,
@@ -62,7 +61,7 @@ def approve_pr(
     return act_on_pr(db, pr_id, user, "APPROVE", remarks)
 
 
-@router.post("/{pr_id}/reject")
+@router.post("/{pr_id}/reject",dependencies=[Depends(require_permission("PR_REJECT"))])
 def reject_pr(
     pr_id: UUID,
     remarks: str | None = None,

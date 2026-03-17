@@ -1,14 +1,22 @@
 from sqlalchemy.orm import Session
+
 from app.models.purchase.purchase_requisition import PurchaseRequisition
 from app.models.purchase.purchase_requisition import PurchaseRequisitionItem
 from app.models.purchase.purchase_requisition_attachment import PurchaseRequisitionAttachment
 from app.models.factory import Factory
 from app.models.warehouse import Warehouse
 from app.models.unit import Unit
+from app.core.permissions import get_user_permissions
+
 
 def get_pr_detail(db: Session, pr_id, user):
 
-    result = (
+    permissions = get_user_permissions(db, user.id)
+
+    # -------------------------------
+    # Build Query
+    # -------------------------------
+    query = (
         db.query(
             PurchaseRequisition,
             Factory.name.label("factory_name"),
@@ -20,24 +28,32 @@ def get_pr_detail(db: Session, pr_id, user):
             PurchaseRequisition.id == pr_id,
             PurchaseRequisition.company_id == user.company_id
         )
-        .first()
     )
 
+    # -------------------------------
+    # Permission-aware filtering
+    # -------------------------------
+    if "PR_VIEW_ALL" not in permissions:
+        query = query.filter(PurchaseRequisition.created_by == user.id)
+
+    result = query.first()
+
     if not result:
-        raise ValueError("PR not found")
+        raise ValueError("PR not found or access denied")
 
     pr, factory_name, warehouse_name = result
 
     # ---------------- Items ----------------
     items = (
-    db.query(
-        PurchaseRequisitionItem,
-        Unit.unit_code.label("unit_name")
+        db.query(
+            PurchaseRequisitionItem,
+            Unit.unit_code.label("unit_name")
+        )
+        .outerjoin(Unit, Unit.id == PurchaseRequisitionItem.unit_id)
+        .filter(PurchaseRequisitionItem.pr_id == pr.id)
+        .all()
     )
-    .outerjoin(Unit, Unit.id == PurchaseRequisitionItem.unit_id)
-    .filter(PurchaseRequisitionItem.pr_id == pr.id)
-    .all()
-)
+
     # ---------------- Attachments ----------------
     attachments = db.query(PurchaseRequisitionAttachment).filter(
         PurchaseRequisitionAttachment.pr_id == pr.id
@@ -67,7 +83,8 @@ def get_pr_detail(db: Session, pr_id, user):
                 "approved_qty": float(i.approved_qty or 0),
 
                 "unit_id": i.unit_id,
-                "unit_name":unit_name,
+                "unit_name": unit_name,
+
                 "estimated_rate": float(i.estimated_rate or 0),
 
                 "department_id": i.department_id,
@@ -79,7 +96,7 @@ def get_pr_detail(db: Session, pr_id, user):
                 "required_by_date": i.required_by_date,
                 "status": i.status
             }
-            for i,unit_name in items
+            for i, unit_name in items
         ],
 
         "attachments": [
@@ -92,15 +109,24 @@ def get_pr_detail(db: Session, pr_id, user):
         ]
     }
 
+
 def get_pr_attachments(db: Session, pr_id, user):
 
-    pr = db.query(PurchaseRequisition).filter(
+    permissions = get_user_permissions(db, user.id)
+
+    query = db.query(PurchaseRequisition).filter(
         PurchaseRequisition.id == pr_id,
         PurchaseRequisition.company_id == user.company_id
-    ).first()
+    )
+
+    # permission filtering
+    if "PR_VIEW_ALL" not in permissions:
+        query = query.filter(PurchaseRequisition.created_by == user.id)
+
+    pr = query.first()
 
     if not pr:
-        raise ValueError("PR not found")
+        raise ValueError("PR not found or access denied")
 
     attachments = db.query(PurchaseRequisitionAttachment).filter(
         PurchaseRequisitionAttachment.pr_id == pr.id
