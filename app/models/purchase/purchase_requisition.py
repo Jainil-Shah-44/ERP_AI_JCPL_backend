@@ -2,11 +2,12 @@ import uuid
 from datetime import date
 from sqlalchemy import (
     Column, String, Date, Text, Boolean,
-    ForeignKey, Numeric, DateTime
+    ForeignKey, Numeric, DateTime, Integer
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from app.db.base import Base
+from sqlalchemy.orm import relationship
 
 
 class PurchaseRequisition(Base):
@@ -38,6 +39,12 @@ class PurchaseRequisition(Base):
     created_at = Column(DateTime, server_default=func.now())
     created_by = Column(UUID(as_uuid=True))
 
+    items = relationship(
+        "PurchaseRequisitionItem",
+        backref="pr",
+        order_by="PurchaseRequisitionItem.line_number"
+    )
+
 
 class PurchaseRequisitionItem(Base):
     __tablename__ = "purchase_requisition_item"
@@ -51,7 +58,7 @@ class PurchaseRequisitionItem(Base):
     )
 
     pr_number = Column(String(50))   # NEW
-
+    line_number = Column(Integer, nullable=False)  # ⭐ ADD THIS
 
     material_id = Column(UUID(as_uuid=True), nullable=False)
     material_code = Column(String(50))

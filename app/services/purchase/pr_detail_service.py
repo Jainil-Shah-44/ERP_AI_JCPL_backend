@@ -51,6 +51,7 @@ def get_pr_detail(db: Session, pr_id, user):
         )
         .outerjoin(Unit, Unit.id == PurchaseRequisitionItem.unit_id)
         .filter(PurchaseRequisitionItem.pr_id == pr.id)
+        .order_by(PurchaseRequisitionItem.line_number) 
         .all()
     )
 

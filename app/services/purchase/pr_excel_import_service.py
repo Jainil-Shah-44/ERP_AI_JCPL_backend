@@ -1,4 +1,6 @@
 from sqlalchemy.orm import Session
+import re
+from datetime import date, datetime
 
 from app.models.raw_material import RawMaterial
 from app.models.factory import Factory
@@ -11,7 +13,6 @@ from app.models.purchase.purchase_requisition import PurchaseRequisitionItem
 
 from app.services.purchase.pr_number_service import generate_pr_number
 
-
 # DEFAULT MASTER IDS
 DEFAULT_CATEGORY_ID = "b82a8f13-4cb9-46fa-b0c4-b6a31a149d03"
 DEFAULT_GROUP_ID = "775b552d-e55a-4990-9fc3-66d711bcddd8"
@@ -20,80 +21,196 @@ DEFAULT_GROUP_ID = "775b552d-e55a-4990-9fc3-66d711bcddd8"
 def normalize(value: str):
     if not value:
         return ""
+    value = value.lower()
+    value = re.sub(r"[^\w\s]", "", value)
+    value = value.replace(" ", "")
+    return value.strip()
 
-    return (
-        value
-        .lower()
-        .replace("\r", "")
-        .replace("\n", "")
-        .replace("\t", "")
-        .replace("  ", " ")
-        .strip()
-    )
+
+def parse_date_safe(val):
+    if not val:
+        return date.today()
+
+    if isinstance(val, date):
+        return val
+
+    if isinstance(val, str):
+        val = val.strip()
+        if not val:
+            return date.today()
+
+        try:
+            return datetime.strptime(val, "%Y-%m-%d").date()
+        except:
+            return date.today()
+
+    return date.today()
+
 
 def import_pr_from_excel(db: Session, rows, current_user, company_id, company_code):
 
+    errors = []
+    valid_rows = []
+
     if not rows:
-        raise ValueError("Excel sheet is empty")
+        return {"success": False, "errors": [{"row": 0, "message": "Excel sheet is empty"}]}
 
-    # ---------------- PRELOAD MATERIALS ----------------
+    # ---------------- PRELOAD ----------------
 
-    materials = {}
-
-    for m in db.query(RawMaterial).filter(RawMaterial.company_id == company_id).all():
-        materials[normalize(m.material_name)] = m
-
-    # ---------------- PRELOAD FACTORIES ----------------
+    materials = {
+        normalize(m.material_name): m
+        for m in db.query(RawMaterial).filter(RawMaterial.company_id == company_id).all()
+    }
 
     factories = {
         f.name.strip(): f.id
-        for f in db.query(Factory)
-        .filter(Factory.company_id == company_id)
-        .all()
+        for f in db.query(Factory).filter(Factory.company_id == company_id).all()
     }
 
-    # ---------------- PRELOAD DEPARTMENTS ----------------
+    departments_by_name = {}
+    departments_list = []
 
-    departments = {
-        normalize(d.name): d
-        for d in db.query(Department)
-        .filter(Department.company_id == company_id)
-        .all()
+    for d in db.query(Department).filter(Department.company_id == company_id).all():
+        departments_by_name[normalize(d.name)] = d
+        departments_list.append(d)
+
+    units = {
+        normalize(u.unit_code): u
+        for u in db.query(Unit).filter(Unit.company_id == company_id).all()
     }
-
-    # ---------------- PRELOAD UNITS ----------------
-
-    units = {}
-
-    for u in db.query(Unit).filter(Unit.company_id == company_id).all():
-        units[normalize(u.unit_code)] = u
-
-    # ---------------- MAIN WAREHOUSE ----------------
 
     warehouse = (
         db.query(Warehouse)
-        .filter(
-            Warehouse.company_id == company_id,
-            Warehouse.name == "Main Warehouse"
-        )
+        .filter(Warehouse.company_id == company_id, Warehouse.name == "Main Warehouse")
         .first()
     )
 
     if not warehouse:
-        raise ValueError("Main Warehouse not found")
+        return {"success": False, "errors": [{"row": 0, "message": "Main Warehouse not found"}]}
 
-    first = rows[0]
+    # ---------------- DEPARTMENT RESOLVER ----------------
 
-    # ---------------- FACTORY ----------------
+    def resolve_department(val):
+        key = normalize(val)
+        if not key:
+            return None
 
-    factory_name = (first.factory_name or "").strip()
+        if key in departments_by_name:
+            return departments_by_name[key]
 
-    if factory_name not in factories:
-        raise ValueError(f"Factory not found: {factory_name}")
+        short = key[:3]
 
-    factory_id = factories[factory_name]
+        for d in departments_list:
+            if normalize(d.name).startswith(short):
+                return d
+
+        return None
+
+    # ---------------- MAIN LOOP ----------------
+
+    for index, r in enumerate(rows, start=1):
+        try:
+            # -------- FACTORY --------
+            factory_name = (r.get("factory_name") or "").strip()
+
+            if not factory_name:
+                raise ValueError("Factory is empty")
+
+            if factory_name not in factories:
+                raise ValueError(f"Factory not found: {factory_name}")
+
+            factory_id = factories[factory_name]
+
+            # # -------- DATE VALIDATION --------
+            # if r.get("pr_date"):
+            #     try:
+            #         datetime.strptime(r["pr_date"], "%Y-%m-%d")
+            #     except:
+            #         raise ValueError(f"Invalid pr_date: {r['pr_date']}")
+
+            # if r.get("required_by_date"):
+            #     try:
+            #         datetime.strptime(r["required_by_date"], "%Y-%m-%d")
+            #     except:
+            #         raise ValueError(f"Invalid required_by_date: {r['required_by_date']}")
+
+            # -------- MATERIAL --------
+            material_name = normalize(r.get("material_name"))
+
+            material = materials.get(material_name)
+
+            if not material:
+                material_code = r.get("material_name", "").upper().replace(" ", "_")
+
+                excel_unit = normalize(r.get("unit"))
+
+                unit = units.get(excel_unit)
+
+                if excel_unit and not unit:
+                    new_unit = Unit(
+                        company_id=company_id,
+                        unit_code=excel_unit.upper(),
+                        description=excel_unit.upper(),
+                        base_unit_id=None,
+                        conversion_factor=1
+                    )
+                    db.add(new_unit)
+                    db.flush()
+                    unit = new_unit
+                    units[excel_unit] = unit
+
+                if not unit:
+                    unit = units.get("pcs")
+
+                if not unit:
+                    raise ValueError("Default unit PCS not found")
+
+                new_material = RawMaterial(
+                    company_id=company_id,
+                    material_code=material_code,
+                    material_name=r.get("material_name"),
+                    category_id=DEFAULT_CATEGORY_ID,
+                    group_id=DEFAULT_GROUP_ID,
+                    unit_id=unit.id
+                )
+
+                db.add(new_material)
+                db.flush()
+
+                material = new_material
+                materials[material_name] = material
+
+            # -------- DEPARTMENT --------
+            dept = resolve_department(r.get("department"))
+
+            if not dept:
+                raise ValueError(f"Department not found: {r.get('department')}")
+
+            valid_rows.append({
+                "row": index,
+                "data": r,
+                "material": material,
+                "dept": dept,
+                "factory_id": factory_id
+            })
+
+        except Exception as e:
+            errors.append({
+                "row": index,
+                "message": str(e)
+            })
+
+    # ---------------- STRICT VALIDATION ----------------
+
+    if errors:
+        return {
+            "success": False,
+            "errors": errors
+        }
 
     # ---------------- CREATE PR ----------------
+
+    first = valid_rows[0]["data"]
 
     pr_number = generate_pr_number(db, company_id)
 
@@ -101,134 +218,54 @@ def import_pr_from_excel(db: Session, rows, current_user, company_id, company_co
         company_id=company_id,
         company_code=company_code,
         pr_number=pr_number,
-        pr_date=first.pr_date,
+        pr_date=parse_date_safe(first.get("pr_date")),
         requested_by=current_user.id,
-        created_by=current_user.id,   # THIS MUST EXIST
-        department=first.department,
-        factory_id=factory_id,
+        created_by=current_user.id,
+        department=first.get("department"),
+        factory_id=valid_rows[0]["factory_id"],
         warehouse_id=warehouse.id,
         priority="NORMAL",
         status="DRAFT",
-        remarks=first.remarks
+        remarks=first.get("remarks")
     )
 
     db.add(pr)
     db.flush()
 
-    # ---------------- PROCESS ITEMS ----------------
-    # print("Materials in DB:")
-    # for k in materials.keys():
-    #     print(k)
+    # ---------------- CREATE ITEMS ----------------
 
-    for r in rows:
-
-        print("------ ROW ------")
-        print("Excel material:", r.material_name)
-        print("Normalized:", normalize(r.material_name))
-        print("Excel Unit:", getattr(r, "unit", None))
-
-        material_name = normalize(r.material_name)
-
-        material = materials.get(material_name)
-        print("Material found:", material)
-
-        
-
-        # ---------- CREATE MATERIAL IF NOT FOUND ----------
-
-        if not material:           
-
-            print("Creating new material:", r.material_name)
-
-            material_code = r.material_name.upper().replace(" ", "_")
-
-            excel_unit = normalize(r.unit) if getattr(r, "unit", None) else ""
-
-            unit = None
-
-            # ---------------- USE EXISTING UNIT ----------------
-            if excel_unit:
-                unit = units.get(excel_unit)
-
-            # ---------------- CREATE UNIT IF NOT FOUND ----------------
-            if excel_unit and not unit:
-
-                print("Creating new unit:", excel_unit)
-
-                new_unit = Unit(
-                    company_id=company_id,
-                    unit_code=excel_unit.upper(),
-                    description=excel_unit.upper(),
-                    base_unit_id=None,
-                    conversion_factor=1
-                )
-
-                db.add(new_unit)
-                db.flush()
-
-                unit = new_unit
-
-                # add to cache so next rows reuse it
-                units[excel_unit] = unit
-
-            # ---------------- FALLBACK TO PCS ----------------
-            if not unit:
-                unit = units.get("pcs")
-
-            if not unit:
-                raise ValueError("Default unit PCS not found in Unit master")            
-            new_material = RawMaterial(
-                company_id=company_id,
-                material_code=material_code,
-                material_name=r.material_name,
-                category_id=DEFAULT_CATEGORY_ID,
-                group_id=DEFAULT_GROUP_ID,
-                unit_id=unit.id
-            )
-
-            db.add(new_material)
-            db.flush()
-            print("Created material ID:", new_material.id)
-
-            material = new_material
-
-            # add to cache
-            materials[material_name] = material
-            print("Material cache updated:", material_name)
-
-        # ---------------- DEPARTMENT ----------------
-
-        dept = departments.get(normalize(r.department))
-
-        if not dept:
-            raise ValueError(f"Department not found: {r.department}")
-
-        # ---------------- CREATE PR ITEM ----------------
+    for item in valid_rows:
+        r = item["data"]
 
         db.add(
             PurchaseRequisitionItem(
                 pr_id=pr.id,
                 pr_number=pr_number,
+                line_number=item["row"],
 
-                material_id=material.id,
-                material_code=material.material_code,
-                material_name=material.material_name,
+                material_id=item["material"].id,
+                material_code=item["material"].material_code,
+                material_name=item["material"].material_name,
 
-                requested_qty=r.qty,
-                unit_id=material.unit_id,
+                requested_qty=r.get("qty"),
+                unit_id=item["material"].unit_id,
 
-                department_id=dept.id,
-                department_name=dept.name,
+                department_id=item["dept"].id,
+                department_name=item["dept"].name,
 
-                description=getattr(r, "description", None),
-                remarks=r.remarks,
+                description=r.get("description"),
+                remarks=r.get("remarks"),
 
-                required_by_date=r.required_by_date,
-
+                required_by_date=parse_date_safe(r.get("required_by_date")),
                 status="PENDING"
             )
         )
 
     db.commit()
 
-    return pr
+    return {
+        "success": True,
+        "pr_id": pr.id,
+        "pr_number": pr_number,
+        "errors": errors
+    }

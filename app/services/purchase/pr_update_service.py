@@ -51,7 +51,7 @@ def update_pr(db: Session, pr_id, payload, user):
     # ------------------------------------------
     # Insert new items
     # ------------------------------------------
-    for item in payload.items:
+    for index, item in enumerate(payload.items, start=1):
 
         dept = departments.get(item.department_id)
 
@@ -65,6 +65,8 @@ def update_pr(db: Session, pr_id, payload, user):
             PurchaseRequisitionItem(
                 pr_id=pr.id,
                 pr_number=pr.pr_number,
+
+                line_number=index,
 
                 material_id=item.material_id,
                 material_code=item.material_code,

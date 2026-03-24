@@ -53,7 +53,7 @@ def create_pr(db: Session, payload, user):
     # Create PR Items
     # ---------------------------------------------------
 
-    for item in payload.items:
+    for index, item in enumerate(payload.items, start=1):
 
         department = departments.get(item.department_id)
 
@@ -67,6 +67,8 @@ def create_pr(db: Session, payload, user):
             PurchaseRequisitionItem(
                 pr_id=pr.id,
                 pr_number=pr_number,
+
+                line_number=index, 
 
                 material_id=item.material_id,
                 material_code=item.material_code,

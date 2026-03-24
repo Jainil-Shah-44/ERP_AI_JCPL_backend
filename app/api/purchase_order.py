@@ -9,9 +9,27 @@ from app.services.purchase.po_status_service import release_po
 from app.services.purchase.po_status_service import cancel_po
 from app.api.dependencies.permission import require_permission
 
-router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"],dependencies=[Depends(require_permission("PO_APPROVE"))])
+from app.schemas.purchase.po_manual_schema import POManualCreate
+from app.services.purchase.po_manual_service import create_manual_po
+from app.services.purchase.po_pdf_service import generate_po_pdf
 
 
+router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"],)
+# dependencies=[Depends(require_permission("PO_APPROVE"))]
+
+
+@router.post("/", dependencies=[Depends(require_permission("PO_APPROVE"))])
+def create_manual_po_endpoint(
+    payload: POManualCreate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    try:
+        return create_manual_po(db, payload, user)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    
 @router.get("/")
 def list_po(
     status: str | None = None,
@@ -46,7 +64,17 @@ def release_po_endpoint(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+    
 
+@router.get("/{po_id}/pdf")
+def download_po_pdf(
+    po_id: UUID,
+    db: Session = Depends(get_db),
+):
+    try:
+        return generate_po_pdf(db, po_id, user=None)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/{po_id}/cancel")
 def cancel_po_endpoint(
@@ -59,3 +87,5 @@ def cancel_po_endpoint(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
+

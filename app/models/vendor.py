@@ -25,6 +25,9 @@ class Vendor(MasterBase):
     address_line2 = Column(String(255))
     address_line3 = Column(String(255))
 
+    address = Column(String)
+    contact_number = Column(String(20))
+
     country = Column(String(100))
     credit_limit = Column(Numeric(15, 2))
     gst_registration_type = Column(String(50))

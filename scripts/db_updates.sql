@@ -237,3 +237,16 @@ AND permission_id = (
 );
 
 
+/* 18 march 2026*/
+
+ALTER TABLE purchase_requisition_attachment
+ALTER COLUMN file_path TYPE TEXT;
+
+ALTER TABLE purchase_requisition_attachment
+ALTER COLUMN file_type TYPE TEXT;
+
+ALTER TABLE purchase_requisition_attachment
+ALTER COLUMN file_name TYPE TEXT;
+
+ALTER TABLE purchase_requisition_item
+ADD COLUMN line_number INT;

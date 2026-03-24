@@ -137,17 +137,14 @@ def import_excel_pr(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
+    rows = [row.dict() for row in payload.rows]
 
-    pr = import_pr_from_excel(
+    result = import_pr_from_excel(
         db,
-        payload.rows,
+        rows,
         current_user,
         current_user.company_id,
         current_user.company_code
     )
 
-    return {
-        "message": "PR created successfully",
-        "pr_id": pr.id,
-        "pr_number": pr.pr_number
-    }
+    return result
