@@ -1,7 +1,7 @@
 import pdfkit
 from fastapi.responses import Response
 from app.services.purchase.po_detail_service import get_po_detail
-
+from app.models.factory import Factory
 config = pdfkit.configuration(
     wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 )
@@ -27,6 +27,13 @@ def generate_po_pdf(db, po_id, user):
             Vendor.id == po_obj.vendor_id
         ).first()
 
+        factory = None
+
+        if po_obj.factory_id:
+            factory = db.query(Factory).filter(
+                Factory.id == po_obj.factory_id
+            ).first()
+
         items = db.query(PurchaseOrderItem).filter(
             PurchaseOrderItem.po_id == po_obj.id
         ).all()
@@ -35,11 +42,19 @@ def generate_po_pdf(db, po_id, user):
             "po_number": po_obj.po_number,
             "po_date": po_obj.po_date,
             "vendor_name": vendor.name if vendor else "",
-            "vendor_address": po_obj.vendor_address,
+            "vendor_address_line1": po_obj.vendor_address_line1,
+            "vendor_address_line2": po_obj.vendor_address_line2,
+            
             "vendor_contact": po_obj.vendor_contact,
             "payment_terms": po_obj.payment_terms,
             "delivery_terms": po_obj.delivery_terms,
             "transporter": po_obj.transporter,
+            "plot_no": po_obj.plot_no,
+            "factory_name": factory.name if factory else "",
+            "factory_range": po_obj.factory_range,
+            "factory_division": po_obj.factory_division,
+            "factory_commissionerate": po_obj.factory_commissionerate,
+            "factory_gstin": po_obj.factory_gstin,
             "sgst_percent": float(po_obj.sgst_percent or 0),
             "cgst_percent": float(po_obj.cgst_percent or 0),
             "sgst_amount": float(po_obj.sgst_amount or 0),
@@ -50,8 +65,10 @@ def generate_po_pdf(db, po_id, user):
                 {
                     "material_name": i.material_name,
                     "description": i.description,
+                    "specification":i.specification,
                     "quantity": float(i.quantity),
                     "rate": float(i.rate),
+                    "hsn_code":i.hsn_code,
                     "amount": float(i.amount),
                 }
                 for i in items
@@ -67,95 +84,87 @@ def generate_po_pdf(db, po_id, user):
 
     @page {{
         size: A4;
-        margin: 20mm;
+        margin: 10mm;
     }}
 
     body {{
-        font-family: Arial, sans-serif;
-        font-size: 12px;
-        color: #000;
+        font-family: Arial;
+        font-size: 11px;
+    }}
+
+    .main-box {{
+        border: 2px solid black;
+        padding: 8px;
     }}
 
     .header {{
         text-align: center;
         border-bottom: 2px solid black;
-        padding-bottom: 6px;
+        padding-bottom: 5px;
     }}
 
     .company {{
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
+    }}
+
+    .sub-header {{
+        font-size: 10px;
     }}
 
     .title {{
         text-align: center;
-        font-size: 16px;
         font-weight: bold;
-        margin: 10px 0;
-        letter-spacing: 1px;
+        font-size: 14px;
+        border: 1px solid black;
+        padding: 4px;
+        margin-top: 5px;
     }}
 
     .row {{
         display: flex;
-        justify-content: space-between;
-        margin-top: 10px;
+        width: 100%;
     }}
 
     .box {{
-        width: 48%;
         border: 1px solid black;
-        padding: 8px;
-        min-height: 100px;
+        padding: 6px;
     }}
 
-    .label {{
-        font-weight: bold;
+    .left-box {{
+        width: 60%;
+    }}
+
+    .right-box {{
+        width: 40%;
     }}
 
     table {{
         width: 100%;
         border-collapse: collapse;
-        margin-top: 12px;
+        margin-top: 5px;
     }}
 
     th, td {{
         border: 1px solid black;
-        padding: 6px;
-        font-size: 11px;
+        padding: 5px;
+        vertical-align: top;
     }}
 
     th {{
-        background-color: #f5f5f5;
         text-align: center;
-    }}
-
-    .center {{
-        text-align: center;
-    }}
-
-    .right {{
-        text-align: right;
-    }}
-
-    .total-table td {{
-        border: none;
-    }}
-
-    .total-row td {{
-        border-top: 1px solid black;
-    }}
-
-    .bold {{
         font-weight: bold;
     }}
 
-    .terms {{
-        margin-top: 15px;
-        font-size: 11px;
+    .center {{ text-align: center; }}
+    .right {{ text-align: right; }}
+
+    .small-text {{
+        font-size: 10px;
     }}
 
     .signature {{
-        margin-top: 40px;
+        margin-top: 20px;
         text-align: right;
     }}
 
@@ -164,103 +173,125 @@ def generate_po_pdf(db, po_id, user):
 
     <body>
 
+    <div class="main-box">
+
     <!-- HEADER -->
+    <!--
     <div class="header">
-        <div class="company">JEEVAN CHEMICALS PVT LTD</div>
-        <div>Factory Address Line Here</div>
-        <div>GSTIN: XXXXXXXX</div>
+        <div class="company">JEEVAN CHEMICALS PVT. LTD.</div>
+        <div class="sub-header">
+            Corporate Office Add: W-2 Building, 8th Floor, Office No. 606-612, Prem Nagar, Vasai, L.T. Road, Borivali West, Mumbai - 400002<br/>
+            Contact No: +91 2245187271 | Email: info@jeevanchemicals.com | Website: www.jeevanchemicals.com
+        </div>
     </div>
+    -->
 
     <div class="title">PURCHASE ORDER</div>
 
-    <!-- VENDOR + PO INFO -->
-    <div class="row">
-        <div class="box">
-            <div class="label">Vendor:</div>
-            {po['vendor_name']}<br/>
-            {po['vendor_address']}<br/>
-            {po['vendor_contact']}
-        </div>
+    <!-- TOP SECTION -->
+    <table style="width:100%; margin-top:5px;">
+    <tr>
 
-        <div class="box">
-            <div><span class="label">PO No:</span> {po['po_number']}</div>
-            <div><span class="label">Date:</span> {po['po_date']}</div>
-            <div><span class="label">Transporter:</span> {po['transporter']}</div>
-            <div><span class="label">Payment:</span> {po['payment_terms']}</div>
-        </div>
-    </div>
+    <td style="width:60%; border:1px solid black; padding:6px; vertical-align:top;">
+        <b>M/S:</b> {po['vendor_name']}<br/>
+        {po.get('vendor_address_line1','')}<br/>
+        {po.get('vendor_address_line2','')}
+    </td>
+
+    <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
+        <b>Plot No:</b> {po.get('factory_name','')}<br/>
+        <b>P.O No:</b> {po.get('plot_no','')}<br/>
+        <b>Date:</b> {po['po_date'].strftime("%d.%m.%Y") if po.get('po_date') else ""}<br/>
+        <b>Transporter:</b> {po.get('transporter','')}
+    </td>
+
+    </tr>
+    </table>
 
     <!-- ITEMS TABLE -->
     <table>
     <tr>
         <th style="width:5%">S.No</th>
-        <th style="width:45%">Description</th>
-        <th style="width:10%">HSN</th>
+        <th style="width:50%">Description & Specification</th>
         <th style="width:10%">Qty</th>
         <th style="width:15%">Rate</th>
-        <th style="width:15%">Amount</th>
+        <th style="width:20%">Value</th>
     </tr>
 
     {''.join([
-    f"""
+    f'''
     <tr>
-        <td class="center">{idx+1}</td>
-        <td>
-            <b>{i['material_name']}</b><br/>
-            {i['description'] or ''}
-        </td>
-        <td class="center">{i.get('hsn_code','')}</td>
-        <td class="center">{i['quantity']}</td>
-        <td class="right">{i['rate']}</td>
-        <td class="right">{i['amount']}</td>
+    <td class="center">{idx+1}</td>
+    <td>
+    <b>{i.get('material_name','')}</b><br/>
+    {i.get('description','')}<br/>
+    {i.get('specification','')}<br/><br/>
+    <span class="small-text">HSN: {i.get('hsn_code','')}</span>
+    </td>
+    <td class="center">{i['quantity']}</td>
+    <td class="right">{i['rate']}</td>
+    <td class="right">{i['amount']}</td>
     </tr>
-    """
+    '''
     for idx, i in enumerate(po['items'])
     ])}
 
     </table>
 
-    <!-- TOTAL -->
-    <table class="total-table">
+    <!-- TAX + TOTAL -->
+    <table>
     <tr>
-        <td style="width:70%"></td>
-        <td class="right">Subtotal:</td>
-        <td class="right">{po['total_amount'] - po['sgst_amount'] - po['cgst_amount']}</td>
+    <td style="width:60%"></td>
+    <td>SGST ({po['sgst_percent']}%)</td>
+    <td class="right">{po['sgst_amount']}</td>
     </tr>
     <tr>
-        <td></td>
-        <td class="right">SGST ({po['sgst_percent']}%)</td>
-        <td class="right">{po['sgst_amount']}</td>
+    <td></td>
+    <td>CGST ({po['cgst_percent']}%)</td>
+    <td class="right">{po['cgst_amount']}</td>
     </tr>
     <tr>
-        <td></td>
-        <td class="right">CGST ({po['cgst_percent']}%)</td>
-        <td class="right">{po['cgst_amount']}</td>
-    </tr>
-    <tr class="total-row bold">
-        <td></td>
-        <td class="right">TOTAL</td>
-        <td class="right">{po['total_amount']}</td>
+    <td></td>
+    <td><b>TOTAL</b></td>
+    <td class="right"><b>{po['total_amount']}</b></td>
     </tr>
     </table>
 
-    <!-- TERMS -->
-    <div class="terms">
-        <div><b>Payment Terms:</b> {po['payment_terms']}</div>
-        <div><b>Delivery Terms:</b> {po['delivery_terms']}</div>
-        <div><b>Instructions:</b> {po['other_instructions']}</div>
-    </div>
+    <!-- BOTTOM SECTION -->
+    <table style="width:100%; margin-top:10px;">
+    <tr>
+
+    <td style="width:60%; border:1px solid black; padding:6px; vertical-align:top;">
+        <b>Terms of Payment:</b> {po.get('payment_terms','')}<br/><br/>
+
+        <b>Range:</b> {po.get('factory_range','')}<br/>
+        <b>Division:</b> {po.get('factory_division','')}<br/>
+        <b>Commissionerate:</b> {po.get('factory_commissionerate','')}<br/>
+        <b>GSTIN:</b> {po.get('factory_gstin','')}
+    </td>
+
+    <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
+        <b>Other Instructions:</b><br/>
+        {po.get('other_instructions','')}<br/><br/>
+
+        <b>Freight:</b> PAID
+    </td>
+
+    </tr>
+    </table>
 
     <!-- SIGNATURE -->
     <div class="signature">
-        For Jeevan Chemicals Pvt Ltd<br/><br/><br/>
-        Authorized Signatory
+        FOR JEEVAN CHEMICALS PVT LTD<br/><br/><br/>
+        SANJAY SHAH<br/>
+        AUTHORISED SIGNATORY
+    </div>
+
     </div>
 
     </body>
     </html>
     """
-
     pdf = pdfkit.from_string(html, False, configuration=config)
 
     return Response(

@@ -6,6 +6,9 @@ from app.crud import vendor as crud
 from app.schemas.vendor import VendorCreate, VendorUpdate, VendorRead
 from app.api.deps import get_db, get_current_user
 from app.api.dependencies.permission import require_any_permission
+from app.models.vendor import Vendor
+
+
 router = APIRouter(
     prefix="/api/masters/vendors",
     tags=["Vendor"],
@@ -17,6 +20,35 @@ def create(payload: VendorCreate, db: Session = Depends(get_db), user=Depends(ge
 @router.get("/", response_model=list[VendorRead])
 def list_all(db: Session = Depends(get_db), user=Depends(get_current_user),_ = Depends(require_any_permission("MASTER_VIEW","MASTER_EDIT"))):
     return crud.list(db=db, company_id=user.company_id)
+
+
+@router.get("/search")
+def search_vendors(
+    search: str = "",
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    query = db.query(Vendor).filter(
+        Vendor.company_id == user.company_id
+    )
+
+    if search:
+        query = query.filter(
+            Vendor.name.ilike(f"%{search}%")
+        )
+
+    vendors = query.limit(20).all()
+
+    return [
+        {
+            "id": str(v.id),
+            "name": v.name,
+            "contact_number": v.contact_number,
+            "address_line1": v.address_line2,
+            "address_line2": v.address_line3,
+        }
+        for v in vendors
+    ]
 
 @router.get("/{id}", response_model=VendorRead)
 def get(id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user),_ = Depends(require_any_permission("MASTER_VIEW","MASTER_EDIT"))):
@@ -36,3 +68,5 @@ def update(id: UUID, payload: VendorUpdate, db: Session = Depends(get_db), user=
 def delete(id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user), _ = Depends(require_any_permission("VENDOR_EDIT","MASTER_EDIT"))):
     if not crud.remove(db=db, id=id, company_id=user.company_id):
         raise HTTPException(404, "Vendor not found")
+
+

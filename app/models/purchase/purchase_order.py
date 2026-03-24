@@ -29,6 +29,20 @@ class PurchaseOrder(Base):
     vendor_address = Column(String)
     vendor_contact = Column(String)
 
+    # NEW FIELDS
+
+    plot_no = Column(String(100))
+
+    vendor_address_line1 = Column(String)
+    vendor_address_line2 = Column(String)
+
+    factory_id = Column(UUID(as_uuid=True))    
+
+    factory_range = Column(String)
+    factory_division = Column(String)
+    factory_commissionerate = Column(String)
+    factory_gstin = Column(String)
+
     delivery_terms = Column(String)
     payment_terms = Column(String)
 
@@ -71,6 +85,8 @@ class PurchaseOrderItem(Base):
 
 
     description = Column(String)
+    specification = Column(String)
+    unit_name = Column(String(50))
     hsn_code = Column(String(20))
     weight = Column(Numeric(10, 3))
 

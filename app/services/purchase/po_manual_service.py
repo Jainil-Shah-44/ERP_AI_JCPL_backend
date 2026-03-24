@@ -1,92 +1,139 @@
 from sqlalchemy.orm import Session
 from decimal import Decimal
-
 from app.models.purchase.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.vendor import Vendor
+from app.models.factory import Factory
+from app.models.unit import Unit
 from app.services.purchase.po_number_service import generate_po_number
 
 
 def create_manual_po(db: Session, payload, user):
 
-    # 🔍 Vendor validation
-    vendor = db.query(Vendor).filter(
-        Vendor.id == payload.vendor_id
-    ).first()
+    try:
+        # 🔍 Vendor validation
+        vendor = db.query(Vendor).filter(
+            Vendor.id == payload.vendor_id
+        ).first()
 
-    if not vendor:
-        raise ValueError("Vendor not found")
+        if not vendor:
+            raise ValueError("Vendor not found")
 
-    # 🔢 Generate PO number
-    po_number = generate_po_number(db, user.company_id)
+        # 🔍 Factory (optional)
+        factory = None
+        if payload.factory_id:
+            factory = db.query(Factory).filter(
+                Factory.id == payload.factory_id
+            ).first()
 
-    # 🧾 Create PO header
-    po = PurchaseOrder(
-        company_id=user.company_id,
-        company_code=user.company_code,
-        po_number=po_number,
-        vendor_id=vendor.id,
-        created_by=user.id,
+        # 🔢 Generate PO number
+        po_number = generate_po_number(db, user.company_id)
 
-        vendor_address=payload.vendor_address or getattr(vendor, "address", None) or "N/A",
-        vendor_contact=payload.vendor_contact or getattr(vendor, "contact_number", None) or "N/A",
+        # 🧾 Vendor snapshot (IMPORTANT)
+        vendor_address_line1 = payload.vendor_address_line1 or getattr(vendor, "address_line2", "") or ""
+        vendor_address_line2 = payload.vendor_address_line2 or getattr(vendor, "address_line3", "") or ""
 
-        payment_terms=payload.payment_terms,
-        delivery_terms=payload.delivery_terms,
-        transporter=payload.transporter,
-        freight_paid=payload.freight_paid,
-        other_instructions=payload.other_instructions,
+        vendor_contact = payload.vendor_contact or getattr(vendor, "contact_number", "") or ""
 
-        sgst_percent=payload.sgst_percent,
-        cgst_percent=payload.cgst_percent,
-    )
+        # 🧾 Factory snapshot (IMPORTANT)
+        factory_range = payload.factory_range or (factory.range if factory else "")
+        factory_division = payload.factory_division or (factory.division if factory else "")
+        factory_commissionerate = payload.factory_commissionerate or (factory.commissionerate if factory else "")
+        factory_gstin = payload.factory_gstin or (factory.gstin if factory else "")
 
-    db.add(po)
-    db.flush()
+        # 🧾 Create PO
+        po = PurchaseOrder(
+            company_id=user.company_id,
+            company_code=user.company_code,
+            po_number=po_number,
+            vendor_id=vendor.id,
+            created_by=user.id,
 
-    # 💰 Calculate totals
-    total = Decimal("0.00")
+            # 🔷 Vendor snapshot
+            vendor_address_line1=vendor_address_line1,
+            vendor_address_line2=vendor_address_line2,
+            vendor_contact=vendor_contact,
 
-    for item in payload.items:
+            # 🔷 Header
+            plot_no=payload.plot_no,
 
-        if item.quantity <= 0:
-            raise ValueError("Quantity must be greater than 0")
+            # 🔷 Factory snapshot
+            factory_id=payload.factory_id,
+            factory_range=factory_range,
+            factory_division=factory_division,
+            factory_commissionerate=factory_commissionerate,
+            factory_gstin=factory_gstin,
 
-        if item.rate <= 0:
-            raise ValueError("Rate must be greater than 0")
+            # 🔷 Terms
+            payment_terms=payload.payment_terms,
+            delivery_terms=payload.delivery_terms,
+            transporter=payload.transporter,
+            freight_paid=payload.freight_paid,
+            other_instructions=payload.other_instructions,
 
-        amount = item.quantity * item.rate
-        total += amount
+            # 🔷 Tax
+            sgst_percent=payload.sgst_percent,
+            cgst_percent=payload.cgst_percent,
+        )
 
-        db.add(PurchaseOrderItem(
-            po_id=po.id,
+        db.add(po)
+        db.flush()
 
-            # RFQ fields null
-            rfq_item_id=None,
-            material_id=None,
+        # 💰 Totals
+        total = Decimal("0.00")
 
-            material_name=item.material_name,
-            description=item.description,
+        for item in payload.items:
 
-            quantity=item.quantity,
-            unit_id=item.unit_id,
-            rate=item.rate,
-            amount=amount,
+            if item.quantity <= 0:
+                raise ValueError("Quantity must be greater than 0")
 
-            hsn_code=item.hsn_code,
-            weight=item.weight
-        ))
+            if item.rate <= 0:
+                raise ValueError("Rate must be greater than 0")
 
-    # 🧾 Tax calculation
-    sgst_amount = (total * payload.sgst_percent) / Decimal("100")
-    cgst_amount = (total * payload.cgst_percent) / Decimal("100")
+            amount = (item.quantity * item.rate).quantize(Decimal("0.01"))
+            total += amount
 
-    po.sgst_amount = sgst_amount
-    po.cgst_amount = cgst_amount
-    po.total_amount = total + sgst_amount + cgst_amount
+            # 🔍 Unit name fetch (fallback)
+            unit_name = item.unit_name
+            if not unit_name:
+                unit = db.query(Unit).filter(Unit.id == item.unit_id).first()
+                unit_name = unit.unit_code if unit else ""
 
-    db.commit()
+            db.add(PurchaseOrderItem(
+                po_id=po.id,
 
-    return {
-        "po_id": po.id,
-        "po_number": po.po_number
-    }
+                rfq_item_id=None,
+                material_id=None,
+
+                material_name=item.material_name,
+                description=item.description,
+                specification=item.specification,
+
+                quantity=item.quantity,
+                unit_id=item.unit_id,
+                unit_name=unit_name,
+
+                rate=item.rate,
+                amount=amount,
+
+                hsn_code=item.hsn_code,
+                weight=item.weight
+            ))
+
+        # 🧾 Tax calculation
+        sgst_amount = (total * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+        cgst_amount = (total * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+
+        po.sgst_amount = sgst_amount
+        po.cgst_amount = cgst_amount
+        po.total_amount = (total + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
+
+        db.commit()
+
+        return {
+            "po_id": po.id,
+            "po_number": po.po_number
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise e

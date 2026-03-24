@@ -12,7 +12,7 @@ from app.api.dependencies.permission import require_permission
 from app.schemas.purchase.po_manual_schema import POManualCreate
 from app.services.purchase.po_manual_service import create_manual_po
 from app.services.purchase.po_pdf_service import generate_po_pdf
-
+from app.services.purchase.po_update_service import update_manual_po
 
 router = APIRouter(prefix="/api/purchase-order", tags=["Purchase Order"],)
 # dependencies=[Depends(require_permission("PO_APPROVE"))]
@@ -76,6 +76,20 @@ def download_po_pdf(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
+@router.put("/{po_id}")
+def update_po(
+    po_id: UUID,
+    payload: POManualCreate,
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    try:
+        return update_manual_po(db, po_id, payload, user)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+    
 @router.post("/{po_id}/cancel")
 def cancel_po_endpoint(
     po_id: UUID,

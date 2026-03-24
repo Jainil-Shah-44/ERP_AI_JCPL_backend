@@ -6,6 +6,9 @@ from app.crud import raw_material as crud
 from app.schemas.raw_material import RawMaterialCreate, RawMaterialUpdate, RawMaterialRead
 from app.api.deps import get_db, get_current_user
 from app.api.dependencies.permission import require_any_permission
+from app.models.raw_material import RawMaterial
+from app.models.unit import Unit
+
 
 router = APIRouter(
     prefix="/api/masters/raw-material",
@@ -18,6 +21,36 @@ def create(payload: RawMaterialCreate, db: Session = Depends(get_db), user=Depen
 @router.get("/", response_model=list[RawMaterialRead])
 def list_all(db: Session = Depends(get_db), user=Depends(get_current_user),_ = Depends(require_any_permission("MASTER_VIEW","MASTER_EDIT"))):
     return crud.list(db=db, company_id=user.company_id)
+
+
+
+
+@router.get("/search")
+def search_materials(
+    search: str = "",
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    query = db.query(RawMaterial).filter(
+        RawMaterial.company_id == user.company_id
+    )
+
+    if search:
+        query = query.filter(
+            RawMaterial.material_name.ilike(f"%{search}%")
+        )
+
+    materials = query.limit(20).all()
+
+    return [
+        {
+            "id": str(m.id),
+            "material_name": m.material_name,
+            "unit_id": str(m.unit_id),
+            "unit_name": m.unit.unit_code if m.unit else "",
+        }
+        for m in materials
+    ]
 
 @router.get("/{id}", response_model=RawMaterialRead)
 def get(id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user),_ = Depends(require_any_permission("MASTER_VIEW","MASTER_EDIT"))):

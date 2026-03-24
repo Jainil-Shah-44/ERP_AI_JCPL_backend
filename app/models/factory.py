@@ -15,5 +15,9 @@ class Factory(MasterBase):
     incharge_name = Column(String)
     mobile_number = Column(String)
     email = Column(String)
+    range_ = Column("range", String)
+    division = Column(String)
+    commissionerate = Column(String)
+    gstin = Column(String)
 
     company = relationship("Company")
