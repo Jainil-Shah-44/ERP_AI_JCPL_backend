@@ -176,7 +176,7 @@ def generate_po_pdf(db, po_id, user):
     <div class="main-box">
 
     <!-- HEADER -->
-    <!--
+    
     <div class="header">
         <div class="company">JEEVAN CHEMICALS PVT. LTD.</div>
         <div class="sub-header">
@@ -184,7 +184,7 @@ def generate_po_pdf(db, po_id, user):
             Contact No: +91 2245187271 | Email: info@jeevanchemicals.com | Website: www.jeevanchemicals.com
         </div>
     </div>
-    -->
+    
 
     <div class="title">PURCHASE ORDER</div>
 
@@ -253,7 +253,7 @@ def generate_po_pdf(db, po_id, user):
     <tr>
     <td></td>
     <td><b>TOTAL</b></td>
-    <td class="right"><b>{po['total_amount']}</b></td>
+    <td class="right"><b>{round(po['total_amount'])}</b></td>
     </tr>
     </table>
 
@@ -267,7 +267,7 @@ def generate_po_pdf(db, po_id, user):
         <b>Range:</b> {po.get('factory_range','')}<br/>
         <b>Division:</b> {po.get('factory_division','')}<br/>
         <b>Commissionerate:</b> {po.get('factory_commissionerate','')}<br/>
-        <b>GSTIN:</b> {po.get('factory_gstin','')}
+        <b>GSTIN:</b> 24AABCJ5069J1, DT : 08.02.17
     </td>
 
     <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
