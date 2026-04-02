@@ -32,6 +32,7 @@ def update_manual_po(db: Session, po_id, payload, user):
     po.factory_division = payload.factory_division
     po.factory_commissionerate = payload.factory_commissionerate
     po.factory_gstin = payload.factory_gstin
+    po.tax_type = payload.tax_type
 
     # 🔹 Delete old items
     db.query(PurchaseOrderItem).filter(
@@ -58,15 +59,33 @@ def update_manual_po(db: Session, po_id, payload, user):
         ))
 
     # 🔹 Recalculate tax
-    sgst_amount = (total * payload.sgst_percent) / Decimal("100")
-    cgst_amount = (total * payload.cgst_percent) / Decimal("100")
+    if payload.tax_type == "IGST":
+        igst_amount = (total * payload.igst_percent / Decimal("100")).quantize(Decimal("0.01"))
 
-    po.sgst_percent = payload.sgst_percent
-    po.cgst_percent = payload.cgst_percent
-    po.sgst_amount = sgst_amount
-    po.cgst_amount = cgst_amount
-    po.total_amount = total + sgst_amount + cgst_amount
+        po.igst_percent = payload.igst_percent
+        po.igst_amount = igst_amount
 
+        po.sgst_percent = Decimal("0")
+        po.cgst_percent = Decimal("0")
+        po.sgst_amount = Decimal("0")
+        po.cgst_amount = Decimal("0")
+
+        po.total_amount = (total + igst_amount).quantize(Decimal("0.01"))
+
+    else:
+        sgst_amount = (total * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+        cgst_amount = (total * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+
+        po.sgst_percent = payload.sgst_percent
+        po.cgst_percent = payload.cgst_percent
+        po.sgst_amount = sgst_amount
+        po.cgst_amount = cgst_amount
+
+        po.igst_percent = Decimal("0")
+        po.igst_amount = Decimal("0")
+
+        po.total_amount = (total + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
+    
     db.commit()
 
     return {"message": "PO updated successfully"}

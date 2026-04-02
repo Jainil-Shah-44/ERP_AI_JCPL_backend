@@ -5,7 +5,40 @@ from app.models.factory import Factory
 config = pdfkit.configuration(
     wkhtmltopdf=r"C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe"
 )
+import os
+import tempfile
+from pypdf import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+import io
 
+
+def create_watermark(watermark_path):
+    packet = io.BytesIO()
+    c = canvas.Canvas(packet, pagesize=A4)
+
+    width, height = A4
+
+    # Center image
+    img_width = 300
+    img_height = 300
+
+    x = (width - img_width) / 2
+    y = (height - img_height) / 2
+
+    c.saveState()
+    # c.setFillAlpha(0.08)  # transparency
+    c.drawImage(watermark_path, x, y, width=img_width, height=img_height, mask='auto')
+    c.restoreState()
+
+    c.save()
+    packet.seek(0)
+
+    return PdfReader(packet)
+
+BASE_DIR = os.getcwd()
+LOGO_PATH = os.path.join(BASE_DIR, "static", "JCPL_logo_trans.png")
+WATERMARK_PATH = os.path.join(BASE_DIR, "static", "watermark.png")
 
 def generate_po_pdf(db, po_id, user):
 
@@ -59,6 +92,9 @@ def generate_po_pdf(db, po_id, user):
             "cgst_percent": float(po_obj.cgst_percent or 0),
             "sgst_amount": float(po_obj.sgst_amount or 0),
             "cgst_amount": float(po_obj.cgst_amount or 0),
+            "tax_type": po_obj.tax_type,
+            "igst_percent": float(po_obj.igst_percent or 0),
+            "igst_amount": float(po_obj.igst_amount or 0),
             "total_amount": float(po_obj.total_amount or 0),
             "other_instructions": po_obj.other_instructions,
             "items": [
@@ -75,7 +111,110 @@ def generate_po_pdf(db, po_id, user):
             ]
         }
 
-    subtotal = po["total_amount"] - po["sgst_amount"] - po["cgst_amount"]
+    
+
+    tax_rows = ""
+
+    if po.get("tax_type") == "IGST":
+        tax_rows = f"""
+        <tr>
+            <td></td>
+            <td>IGST ({po.get('igst_percent', 0)}%)</td>
+            <td class="right">{po.get('igst_amount', 0)}</td>
+        </tr>
+        """
+    else:
+        tax_rows = f"""
+        <tr>
+            <td></td>
+            <td>SGST ({po.get('sgst_percent', 0)}%)</td>
+            <td class="right">{po.get('sgst_amount', 0)}</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>CGST ({po.get('cgst_percent', 0)}%)</td>
+            <td class="right">{po.get('cgst_amount', 0)}</td>
+        </tr>
+        """
+
+    # ---------------- HEADER HTML ----------------
+    header_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta charset="utf-8">
+    <style>
+    body {{
+        margin: 0;
+        font-family: Arial;
+        font-size: 10px;
+    }}
+
+    .header {{
+        width: 100%;
+        text-align: center;
+        border-bottom: 2px solid black;
+        padding-bottom: 5px;
+    }}
+
+    img {{
+        width: 70px;
+    }}
+    </style>
+    </head>
+    <body>
+    <div class="header">
+        <img src="file:///{LOGO_PATH}" />
+        <div style="font-size:16px; font-weight:bold;">
+            JEEVAN CHEMICALS PVT. LTD.
+        </div>
+        <div style="font-size:9px;">
+            Corporate Office Add: W-2 Building, 8th Floor, Office No. 606-612,
+            Prem Nagar, Vasai, L.T. Road, Borivali West, Mumbai - 400002<br/>
+            Contact No: +91 2245187271 | Email: info@jeevanchemicals.com
+        </div>
+    </div>
+    </body>
+    </html>
+    """
+
+    # ---------------- FOOTER HTML ----------------
+    footer_html = """
+    <html>
+    <head>
+    <style>
+    body {
+        font-family: Arial;
+        font-size: 9px;
+        margin: 0;
+    }
+    .footer {
+        width: 100%;
+        text-align: center;
+        border-top: 1px solid black;
+        padding-top: 5px;
+    }
+    </style>
+    </head>
+    <body>
+    <div class="footer">
+        FACTORY OFFICE: PLOT NO. C1B-1907/1, 1911/1 + 1913, 1911/2, 1905/2, A2/2403,
+        G.I.D.C., SARIGAM, VIA BHILAD, DIST. VALSAD, GUJARAT - 396155.<br/>
+        PLOT NO: D-3-2-1, GIDC DAHEJ III, DAHEJ, BHARUCH, GUJARAT - 392130.<br/>
+        CIN: U24100MH2005PTC151145
+    </div>
+    </body>
+    </html>
+    """
+
+    # -------- CREATE TEMP FILES --------
+    header_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html")
+    header_file.write(header_html.encode("utf-8"))
+    header_file.close()
+
+    footer_file = tempfile.NamedTemporaryFile(delete=False, suffix=".html")
+    footer_file.write(footer_html.encode("utf-8"))
+    footer_file.close()
 
     html = f"""
     <html>
@@ -84,12 +223,14 @@ def generate_po_pdf(db, po_id, user):
 
     @page {{
         size: A4;
-        margin: 10mm;
+        margin: 10mm;        
     }}
 
     body {{
         font-family: Arial;
         font-size: 11px;
+        position: relative;
+        background: transparent;
     }}
 
     .main-box {{
@@ -98,18 +239,40 @@ def generate_po_pdf(db, po_id, user):
     }}
 
     .header {{
-        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         border-bottom: 2px solid black;
-        padding-bottom: 5px;
+        padding-bottom: 8px;
+    }}
+
+    .logo-container {{
+        width: 30%;
+    }}
+
+    .logo {{
+        width: 130px;
+    }}
+
+    .company-container {{
+        width: 70%;
+        text-align: right;
     }}
 
     .company {{
-        font-size: 20px;
+        font-size: 18px;
         font-weight: bold;
     }}
 
     .sub-header {{
         font-size: 10px;
+    }}
+
+   
+
+    .content {{
+        position: relative;
+        z-index: 1;
     }}
 
     .title {{
@@ -143,6 +306,11 @@ def generate_po_pdf(db, po_id, user):
         width: 100%;
         border-collapse: collapse;
         margin-top: 5px;
+        page-break-inside: auto;
+    }}
+
+    tr {{
+    page-break-inside: avoid;
     }}
 
     th, td {{
@@ -154,6 +322,15 @@ def generate_po_pdf(db, po_id, user):
     th {{
         text-align: center;
         font-weight: bold;
+    }}
+
+    table, th, td {{
+    position: relative;
+    z-index: 1;
+    }}
+
+    thead {{
+    display: table-header-group;
     }}
 
     .center {{ text-align: center; }}
@@ -168,22 +345,26 @@ def generate_po_pdf(db, po_id, user):
         text-align: right;
     }}
 
+    html, body {{
+        height: 100%;
+    }}
+
     </style>
     </head>
 
+    
+
+    
+    
     <body>
+
+    
+    <div class="content">
 
     <div class="main-box">
 
     <!-- HEADER -->
     
-    <div class="header">
-        <div class="company">JEEVAN CHEMICALS PVT. LTD.</div>
-        <div class="sub-header">
-            Corporate Office Add: W-2 Building, 8th Floor, Office No. 606-612, Prem Nagar, Vasai, L.T. Road, Borivali West, Mumbai - 400002<br/>
-            Contact No: +91 2245187271 | Email: info@jeevanchemicals.com | Website: www.jeevanchemicals.com
-        </div>
-    </div>
     
 
     <div class="title">PURCHASE ORDER</div>
@@ -240,21 +421,15 @@ def generate_po_pdf(db, po_id, user):
 
     <!-- TAX + TOTAL -->
     <table>
-    <tr>
-    <td style="width:60%"></td>
-    <td>SGST ({po['sgst_percent']}%)</td>
-    <td class="right">{po['sgst_amount']}</td>
-    </tr>
-    <tr>
-    <td></td>
-    <td>CGST ({po['cgst_percent']}%)</td>
-    <td class="right">{po['cgst_amount']}</td>
-    </tr>
+
+    {tax_rows}
+
     <tr>
     <td></td>
     <td><b>TOTAL</b></td>
     <td class="right"><b>{round(po['total_amount'])}</b></td>
     </tr>
+
     </table>
 
     <!-- BOTTOM SECTION -->
@@ -272,7 +447,7 @@ def generate_po_pdf(db, po_id, user):
 
     <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
         <b>Other Instructions:</b><br/>
-        {po.get('other_instructions','')}<br/><br/>
+        {(po.get('other_instructions','') or '').replace('\n', '<br/>')}<br/><br/>
 
         <b>Freight:</b> PAID
     </td>
@@ -288,11 +463,40 @@ def generate_po_pdf(db, po_id, user):
     </div>
 
     </div>
+    </div>
 
     </body>
     </html>
     """
-    pdf = pdfkit.from_string(html, False, configuration=config)
+    options = {
+        "enable-local-file-access": None,
+        "print-media-type": None,
+        "zoom":"1.0",
+        "no-stop-slow-scripts":None,
+        "header-html": header_file.name,
+        "footer-html": footer_file.name,
+        "margin-top": "45mm",
+        "margin-bottom": "30mm",
+        "header-spacing": "8",
+        "footer-spacing": "5",
+    }
+
+    raw_pdf = pdfkit.from_string(html, False, configuration=config, options=options)
+
+    reader = PdfReader(io.BytesIO(raw_pdf))
+    writer = PdfWriter()
+
+    for page in reader.pages:
+        watermark_pdf = create_watermark(WATERMARK_PATH)
+        watermark_page = watermark_pdf.pages[0]
+
+        watermark_page.merge_page(page)
+        writer.add_page(watermark_page)
+
+    output = io.BytesIO()
+    writer.write(output)
+
+    pdf = output.getvalue()
 
     return Response(
         content=pdf,

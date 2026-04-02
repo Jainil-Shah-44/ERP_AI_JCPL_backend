@@ -31,10 +31,17 @@ def get_po_detail(db: Session, po_id, user):
             Factory.id == po.factory_id
         ).first()
 
+   
+
     # 🔹 Items
     items = db.query(PurchaseOrderItem).filter(
         PurchaseOrderItem.po_id == po.id
     ).all()
+
+    unit_ids = [item.unit_id for item in items if item.unit_id]
+
+    units = db.query(Unit).filter(Unit.id.in_(unit_ids)).all()
+    unit_map = {u.id: u.description for u in units}
 
     
     return {
@@ -71,6 +78,9 @@ def get_po_detail(db: Session, po_id, user):
         "sgst_amount": float(po.sgst_amount or 0),
         "cgst_amount": float(po.cgst_amount or 0),
         "total_amount": float(po.total_amount or 0),
+        "tax_type": po.tax_type,
+        "igst_percent": float(po.igst_percent or 0),
+        "igst_amount": float(po.igst_amount or 0),
 
         # 🔹 Meta
         "status": po.status,
@@ -94,12 +104,7 @@ def get_po_detail(db: Session, po_id, user):
                 "unit_id": item.unit_id,
 
                 # 🔥 IMPORTANT: add unit_name
-                "unit_name": (
-                    db.query(Unit)
-                    .filter(Unit.id == item.unit_id)
-                    .first().description
-                    if item.unit_id else ""
-                ),
+                "unit_name": unit_map.get(item.unit_id, ""),
 
                 "rate": float(item.rate or 0),
                 "amount": float(item.amount or 0),

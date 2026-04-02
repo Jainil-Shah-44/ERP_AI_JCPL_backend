@@ -50,4 +50,7 @@ class POManualCreate(BaseModel):
     sgst_percent: Decimal
     cgst_percent: Decimal
 
+    tax_type: str  # "GST" or "IGST"
+    igst_percent: Optional[Decimal] = 0
+
     items: List[POManualItem]

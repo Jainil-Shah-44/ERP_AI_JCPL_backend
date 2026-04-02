@@ -81,6 +81,11 @@ def create_manual_po(db: Session, payload, user):
         # 💰 Totals
         total = Decimal("0.00")
 
+        unit_ids = [item.unit_id for item in payload.items if item.unit_id]
+
+        units = db.query(Unit).filter(Unit.id.in_(unit_ids)).all()
+        unit_map = {u.id: u.unit_code for u in units}
+
         for item in payload.items:
 
             if item.quantity <= 0:
@@ -93,7 +98,7 @@ def create_manual_po(db: Session, payload, user):
             total += amount
 
             # 🔍 Unit name fetch (fallback)
-            unit_name = item.unit_name
+            unit_name = item.unit_name or unit_map.get(item.unit_id, "")
             if not unit_name:
                 unit = db.query(Unit).filter(Unit.id == item.unit_id).first()
                 unit_name = unit.unit_code if unit else ""
@@ -119,14 +124,36 @@ def create_manual_po(db: Session, payload, user):
                 weight=item.weight
             ))
 
-        # 🧾 Tax calculation
-        sgst_amount = (total * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
-        cgst_amount = (total * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+        # 🧾 Tax calculation (NEW)
 
-        po.sgst_amount = sgst_amount
-        po.cgst_amount = cgst_amount
-        po.total_amount = (total + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
+        po.tax_type = payload.tax_type
 
+        if payload.tax_type == "IGST":
+            igst_amount = (total * payload.igst_percent / Decimal("100")).quantize(Decimal("0.01"))
+
+            po.igst_percent = payload.igst_percent
+            po.igst_amount = igst_amount
+
+            po.sgst_percent = Decimal("0")
+            po.cgst_percent = Decimal("0")
+            po.sgst_amount = Decimal("0")
+            po.cgst_amount = Decimal("0")
+
+            po.total_amount = (total + igst_amount).quantize(Decimal("0.01"))
+
+        else:  # GST
+            sgst_amount = (total * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+            cgst_amount = (total * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+
+            po.sgst_percent = payload.sgst_percent
+            po.cgst_percent = payload.cgst_percent
+            po.sgst_amount = sgst_amount
+            po.cgst_amount = cgst_amount
+
+            po.igst_percent = Decimal("0")
+            po.igst_amount = Decimal("0")
+
+            po.total_amount = (total + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
         db.commit()
 
         return {

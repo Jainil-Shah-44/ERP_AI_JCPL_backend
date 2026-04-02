@@ -11,6 +11,10 @@ class FactoryCreate(ORMBase):
     incharge_name: Optional[str] = None
     mobile_number: Optional[str] = None
     email: Optional[str] = None
+    range_: Optional[str] = None
+    division: Optional[str] = None
+    commissionerate: Optional[str] = None
+    gstin: Optional[str] = None
 
 class FactoryUpdate(ORMBase):
     name: Optional[str] = None
@@ -23,6 +27,10 @@ class FactoryUpdate(ORMBase):
     mobile_number: Optional[str] = None
     email: Optional[str] = None
     is_active: Optional[bool] = None
+    range_: Optional[str] = None
+    division: Optional[str] = None
+    commissionerate: Optional[str] = None
+    gstin: Optional[str] = None
 
 class FactoryRead(MasterReadBase):
     name: str
@@ -34,3 +42,7 @@ class FactoryRead(MasterReadBase):
     incharge_name: Optional[str]
     mobile_number: Optional[str]
     email: Optional[str]
+    range_: Optional[str] = None
+    division: Optional[str] = None
+    commissionerate: Optional[str] = None
+    gstin: Optional[str] = None
