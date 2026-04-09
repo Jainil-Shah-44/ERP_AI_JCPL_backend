@@ -26,7 +26,8 @@ def get_po_list(db, user, status=None, page=1, limit=20):
         {
             "id": po.id,
             "po_number": po.po_number,
-            "po_date": po.po_date,
+            "po_date": po.po_date.isoformat() if po.po_date else None,
+            "plot_no": po.plot_no,   # ✅ ADD THIS
             "vendor_id": po.vendor_id,
             "vendor_name": vendor.name,
             "total_amount": float(po.total_amount or 0),

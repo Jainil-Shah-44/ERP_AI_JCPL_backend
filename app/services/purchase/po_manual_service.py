@@ -52,6 +52,7 @@ def create_manual_po(db: Session, payload, user):
             vendor_address_line1=vendor_address_line1,
             vendor_address_line2=vendor_address_line2,
             vendor_contact=vendor_contact,
+            po_date=payload.po_date,
 
             # 🔷 Header
             plot_no=payload.plot_no,

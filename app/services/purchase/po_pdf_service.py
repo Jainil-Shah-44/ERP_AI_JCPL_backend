@@ -11,7 +11,7 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 import io
-
+import re
 
 def create_watermark(watermark_path):
     packet = io.BytesIO()
@@ -111,6 +111,29 @@ def generate_po_pdf(db, po_id, user):
             ]
         }
 
+
+    
+
+    instructions = po.get("other_instructions", "") or ""
+
+    def format_delivery_date(match):
+        date = match.group(1)
+
+        if "-" in date:  # YYYY-MM-DD
+            y, m, d = date.split("-")
+            return f"Delivery Date: {d}/{m}/{y}"
+
+        return f"Delivery Date: {date}"  # already formatted
+
+    # Replace delivery date format
+    instructions = re.sub(
+        r"Delivery Date:\s*(\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})",
+        format_delivery_date,
+        instructions
+    )
+
+    # Convert line breaks for HTML
+    other_instructions_html = instructions.replace("\n", "<br/>")
     
 
     tax_rows = ""
@@ -382,7 +405,7 @@ def generate_po_pdf(db, po_id, user):
     <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
         <b>Plot No:</b> {po.get('factory_name','')}<br/>
         <b>P.O No:</b> {po.get('plot_no','')}<br/>
-        <b>Date:</b> {po['po_date'].strftime("%d.%m.%Y") if po.get('po_date') else ""}<br/>
+        <b>Date:</b> {po['po_date'].strftime("%d/%m/%Y") if po.get('po_date') else ""}<br/>
         <b>Transporter:</b> {po.get('transporter','')}
     </td>
 
@@ -442,14 +465,14 @@ def generate_po_pdf(db, po_id, user):
         <b>Range:</b> {po.get('factory_range','')}<br/>
         <b>Division:</b> {po.get('factory_division','')}<br/>
         <b>Commissionerate:</b> {po.get('factory_commissionerate','')}<br/>
-        <b>GSTIN:</b> 24AABCJ5069J1, DT : 08.02.17
+        <b>GSTIN:</b> 24AABCJ5069J1ZG, DT : 08.02.17
     </td>
 
     <td style="width:40%; border:1px solid black; padding:6px; vertical-align:top;">
         <b>Other Instructions:</b><br/>
-        {(po.get('other_instructions','') or '').replace('\n', '<br/>')}<br/><br/>
+        {other_instructions_html}<br/><br/>
 
-        <b>Freight:</b> PAID
+        
     </td>
 
     </tr>

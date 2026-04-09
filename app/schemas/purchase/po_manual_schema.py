@@ -6,11 +6,12 @@ from decimal import Decimal
 
 class POManualItem(BaseModel):
     material_name: str
+    material_id: Optional[UUID] = None   # ✅ ADD THIS
     description: Optional[str] = None
     specification: Optional[str] = None   # ✅ NEW
 
     quantity: Decimal
-    unit_id: UUID
+    unit_id: Optional[UUID] = None
     unit_name: Optional[str] = None       # ✅ NEW
     rate: Decimal
     hsn_code: Optional[str] = None

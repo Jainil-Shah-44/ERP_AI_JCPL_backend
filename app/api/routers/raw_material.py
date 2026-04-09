@@ -8,7 +8,7 @@ from app.api.deps import get_db, get_current_user
 from app.api.dependencies.permission import require_any_permission
 from app.models.raw_material import RawMaterial
 from app.models.unit import Unit
-
+from app.models.purchase.purchase_order import PurchaseOrderItem
 
 router = APIRouter(
     prefix="/api/masters/raw-material",
@@ -31,26 +31,77 @@ def search_materials(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    query = db.query(RawMaterial).filter(
+    # 🔹 1. RAW MATERIAL MASTER
+    raw_query = db.query(RawMaterial).filter(
         RawMaterial.company_id == user.company_id
     )
 
     if search:
-        query = query.filter(
+        raw_query = raw_query.filter(
             RawMaterial.material_name.ilike(f"%{search}%")
         )
 
-    materials = query.limit(20).all()
+    raw_materials = raw_query.limit(20).all()
 
-    return [
+    raw_result = [
         {
             "id": str(m.id),
             "material_name": m.material_name,
             "unit_id": str(m.unit_id),
             "unit_name": m.unit.unit_code if m.unit else "",
+            "source": "master"
         }
-        for m in materials
+        for m in raw_materials
     ]
+
+    # 🔹 2. PO ITEMS (INCLUDING CUSTOM MATERIAL + UNIT)
+    po_query = db.query(PurchaseOrderItem).filter(
+        PurchaseOrderItem.material_name.isnot(None),
+        PurchaseOrderItem.material_name != "",
+        PurchaseOrderItem.po_id.isnot(None)
+    )
+
+    if search:
+        po_query = po_query.filter(
+            PurchaseOrderItem.material_name.ilike(f"%{search}%")
+        )
+
+    po_items = (
+        po_query
+        .distinct(
+            PurchaseOrderItem.material_name,
+            PurchaseOrderItem.unit_name
+        )
+        .limit(20)
+        .all()
+    )
+
+    po_result = [
+        {
+            "id": f"po_{item.id}",  # 🔹 avoid collision
+            "material_name": item.material_name,
+            "unit_id": None,
+            "unit_name": item.unit_name or "",
+            "source": "po"
+        }
+        for item in po_items
+    ]
+
+    # 🔹 3. MERGE WITH SMART DEDUPLICATION
+    seen = set()
+    combined = []
+
+    for item in raw_result + po_result:
+        key = (
+            item["material_name"].lower().strip(),
+            item["unit_name"].lower().strip()
+        )
+
+        if key not in seen:
+            seen.add(key)
+            combined.append(item)
+
+    return combined[:20]
 
 @router.get("/{id}", response_model=RawMaterialRead)
 def get(id: UUID, db: Session = Depends(get_db), user=Depends(get_current_user),_ = Depends(require_any_permission("MASTER_VIEW","MASTER_EDIT"))):

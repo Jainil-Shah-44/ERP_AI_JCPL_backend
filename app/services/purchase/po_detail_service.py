@@ -41,7 +41,7 @@ def get_po_detail(db: Session, po_id, user):
     unit_ids = [item.unit_id for item in items if item.unit_id]
 
     units = db.query(Unit).filter(Unit.id.in_(unit_ids)).all()
-    unit_map = {u.id: u.description for u in units}
+    unit_map = {u.id: u.unit_code for u in units}
 
     
     return {
@@ -104,7 +104,7 @@ def get_po_detail(db: Session, po_id, user):
                 "unit_id": item.unit_id,
 
                 # 🔥 IMPORTANT: add unit_name
-                "unit_name": unit_map.get(item.unit_id, ""),
+                "unit_name": item.unit_name or unit_map.get(item.unit_id, ""),
 
                 "rate": float(item.rate or 0),
                 "amount": float(item.amount or 0),

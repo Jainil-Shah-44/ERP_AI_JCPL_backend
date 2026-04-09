@@ -22,6 +22,7 @@ def update_manual_po(db: Session, po_id, payload, user):
     po.vendor_address_line1 = payload.vendor_address_line1 or ""
     po.vendor_address_line2 = payload.vendor_address_line2 or ""
     po.plot_no = payload.plot_no
+    po.po_date = payload.po_date
     po.transporter = payload.transporter
     po.payment_terms = payload.payment_terms
     po.delivery_terms = payload.delivery_terms
@@ -44,19 +45,31 @@ def update_manual_po(db: Session, po_id, payload, user):
     # 🔹 Reinsert items
     for item in payload.items:
 
+        material_name = (item.material_name or "").strip()
+
+        if not material_name:
+            continue  # 🚫 skip empty rows
+
         amount = item.quantity * item.rate
         total += amount
 
         db.add(PurchaseOrderItem(
-            po_id=po.id,
-            material_name=item.material_name,
-            description=item.description,
-            quantity=item.quantity,
-            unit_id=item.unit_id,
-            rate=item.rate,
-            amount=amount,
-            hsn_code=item.hsn_code
-        ))
+        po_id=po.id,
+        material_id=item.material_id,
+        material_name=material_name,
+        description=item.description,
+        specification=item.specification,
+
+        quantity=item.quantity,
+        unit_id=item.unit_id,
+        unit_name=item.unit_name,   # 🔥 IMPORTANT
+
+        rate=item.rate,
+        amount=amount,
+
+        hsn_code=item.hsn_code,
+        
+    ))
 
     # 🔹 Recalculate tax
     if payload.tax_type == "IGST":

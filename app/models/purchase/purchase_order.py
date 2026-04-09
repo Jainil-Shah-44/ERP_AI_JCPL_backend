@@ -85,7 +85,7 @@ class PurchaseOrderItem(Base):
     material_name = Column(String(255))
 
     quantity = Column(Numeric(14, 3), nullable=False)
-    unit_id = Column(UUID(as_uuid=True), nullable=False)
+    unit_id = Column(UUID(as_uuid=True), nullable=True)
 
     rate = Column(Numeric(14, 2), nullable=False)
     amount = Column(Numeric(16, 2), nullable=False)
