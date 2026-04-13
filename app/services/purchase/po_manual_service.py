@@ -108,7 +108,7 @@ def create_manual_po(db: Session, payload, user):
                 po_id=po.id,
 
                 rfq_item_id=None,
-                material_id=None,
+                material_id=item.material_id,
 
                 material_name=item.material_name,
                 description=item.description,

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, EmailStr
 
@@ -9,6 +9,7 @@ class UserCreate(BaseModel):
     role: str
     location: Optional[str] = None
     password: str
+    factory_ids: Optional[List[UUID]] = []
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
@@ -17,7 +18,7 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     location: Optional[str] = None
     is_active: Optional[bool] = None
-
+    factory_ids: Optional[List[UUID]] = []
 class UserRead(BaseModel):
     id: UUID
     username: str
@@ -27,6 +28,7 @@ class UserRead(BaseModel):
     location: Optional[str]
     company_code: str
     is_active: bool
+    factory_ids: Optional[List[UUID]] = []
 
     class Config:
         from_attributes = True

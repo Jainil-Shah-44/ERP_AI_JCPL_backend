@@ -6,6 +6,9 @@ from app.core.security import hash_password
 from app.models.role import Role
 from app.models.user_role import UserRole
 from fastapi import HTTPException
+from app.models.factory import Factory
+from app.models.user_factory import UserFactory
+
 
 def create_user(db: Session, *, data, current_user):
 
@@ -23,9 +26,12 @@ def create_user(db: Session, *, data, current_user):
         is_active=True,
     )
 
+
+
     db.add(user)
     db.flush()   # gets user.id before commit
 
+        
     # get role from role table
     role = db.query(Role).filter(Role.name == data.role).first()
 
@@ -38,6 +44,17 @@ def create_user(db: Session, *, data, current_user):
     )
 
     db.add(user_role)
+
+    # 🔥 assign factories
+    for factory_id in (data.factory_ids or []):
+        factory = db.query(Factory).filter(Factory.id == factory_id).first()
+
+        db.add(UserFactory(
+            user_id=user.id,
+            factory_id=factory_id,
+            factory_name=factory.name if factory else None
+        ))
+
 
     db.commit()
     db.refresh(user)
@@ -59,6 +76,11 @@ def get_users(db: Session, *, company_id):
     result = []
 
     for user, role in users:
+        factories = db.query(UserFactory).filter(
+            UserFactory.user_id == user.id
+        ).all()
+
+        user.factory_ids = [f.factory_id for f in factories]
         user.role = role
         result.append(user)
 
@@ -82,6 +104,14 @@ def get_user(db: Session, *, user_id: UUID, company_id):
 
     user, role = result
     user.role = role
+
+    
+
+    factories = db.query(UserFactory).filter(
+        UserFactory.user_id == user.id
+    ).all()
+
+    user.factory_ids = [f.factory_id for f in factories]
 
     return user
 
@@ -109,8 +139,30 @@ def update_user(db: Session, *, user: User, data):
             continue
         setattr(user, field, value)
 
+    
+
+    if "factory_ids" in data.dict(exclude_unset=True):
+
+        # delete old
+        db.query(UserFactory).filter(
+            UserFactory.user_id == user.id
+        ).delete()
+
+        # add new
+        for factory_id in (data.factory_ids or []):
+            factory = db.query(Factory).filter(Factory.id == factory_id).first()
+
+            db.add(UserFactory(
+                user_id=user.id,
+                factory_id=factory_id,
+                factory_name=factory.name if factory else None
+            ))
+
     db.commit()
     db.refresh(user)
+
+    
+    
 
     role = (
         db.query(Role.name)
@@ -120,6 +172,12 @@ def update_user(db: Session, *, user: User, data):
     )
 
     user.role = role[0] if role else None
+
+    factories = db.query(UserFactory).filter(
+        UserFactory.user_id == user.id
+    ).all()
+
+    user.factory_ids = [f.factory_id for f in factories]
 
     return user
 

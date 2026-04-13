@@ -3,6 +3,12 @@ from sqlalchemy import Column, String, Date, Numeric, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from app.db.base import Base
+from app.models.raw_material import RawMaterial
+from app.models.unit import Unit
+from sqlalchemy.orm import relationship
+from sqlalchemy import ForeignKey
+
+
 
 
 class PurchaseOrder(Base):
@@ -16,8 +22,11 @@ class PurchaseOrder(Base):
     po_number = Column(String(30), nullable=False, unique=True)
     po_date = Column(Date, server_default=func.current_date(), nullable=False)
 
-    vendor_id = Column(UUID(as_uuid=True), nullable=False)
-
+    vendor_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("vendor.id"),
+        nullable=False
+    )
     source_rfq_id = Column(UUID(as_uuid=True), nullable=True)
 
     status = Column(String(20), default="DRAFT")
@@ -36,7 +45,12 @@ class PurchaseOrder(Base):
     vendor_address_line1 = Column(String)
     vendor_address_line2 = Column(String)
 
-    factory_id = Column(UUID(as_uuid=True))    
+    factory_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("factory.id"),
+        nullable=True
+    )
+    
 
     factory_range = Column(String)
     factory_division = Column(String)
@@ -67,6 +81,10 @@ class PurchaseOrder(Base):
     created_by = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
 
+    vendor = relationship("Vendor")    
+    factory = relationship("Factory")
+
+
 
 class PurchaseOrderItem(Base):
     __tablename__ = "purchase_order_item"
@@ -75,12 +93,13 @@ class PurchaseOrderItem(Base):
 
     po_id = Column(
         UUID(as_uuid=True),
+        ForeignKey("purchase_order.id"),
         nullable=False
     )
 
     rfq_item_id = Column(UUID(as_uuid=True), nullable=True)
 
-    material_id = Column(UUID(as_uuid=True), nullable=True)
+    
     material_code = Column(String(50))
     material_name = Column(String(255))
 
@@ -98,3 +117,21 @@ class PurchaseOrderItem(Base):
     weight = Column(Numeric(10, 3))
 
     lead_time_days = Column(String(10))
+
+    
+
+    material_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("raw_material.id"),  # ✅ REQUIRED
+        nullable=True
+    )
+
+    unit_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("unit.id"),  # ✅ REQUIRED
+        nullable=True
+    )
+
+    material = relationship("RawMaterial")
+    unit = relationship("Unit")
+    

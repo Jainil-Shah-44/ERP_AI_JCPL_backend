@@ -35,10 +35,11 @@ def list_po(
     status: str | None = None,
     page: int = 1,
     limit: int = 20,
+    factory_id: str | None = None,
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-    return get_po_list(db, user, status, page, limit)
+    return get_po_list(db, user, status, page, limit, factory_id)
 
 
 @router.get("/{po_id}")

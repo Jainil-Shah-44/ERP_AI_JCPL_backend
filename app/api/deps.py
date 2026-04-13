@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import decode_access_token, oauth2_scheme
 from app.models.user import User
+from app.models.user_factory import UserFactory
 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -30,5 +31,13 @@ def get_current_user(
 
     # attach permissions
     user.permissions = permissions
+
+    # 🔥 LOAD FACTORIES
+    factories = db.query(UserFactory).filter(
+        UserFactory.user_id == user.id
+    ).all()
+
+    user.factory_ids = [f.factory_id for f in factories]
+    user.factory_names = [f.factory_name for f in factories]
     
     return user
