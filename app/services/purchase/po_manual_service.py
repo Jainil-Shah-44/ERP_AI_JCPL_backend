@@ -94,8 +94,11 @@ def create_manual_po(db: Session, payload, user):
 
             if item.rate <= 0:
                 raise ValueError("Rate must be greater than 0")
+            quantity = Decimal(item.quantity)
+            rate = Decimal(item.rate)
 
-            amount = (item.quantity * item.rate).quantize(Decimal("0.01"))
+            amount = (quantity * rate).quantize(Decimal("0.01"))
+            
             total += amount
 
             # 🔍 Unit name fetch (fallback)

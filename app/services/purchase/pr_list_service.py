@@ -3,7 +3,7 @@ from app.models.purchase.purchase_requisition import PurchaseRequisition
 from app.core.permissions import get_user_permissions
 
 
-def get_pr_list(db: Session, user, status=None, page=1, limit=20):
+def get_pr_list(db: Session, user, status=None, page=1, limit=10000):
 
     permissions = get_user_permissions(db, user.id)
 

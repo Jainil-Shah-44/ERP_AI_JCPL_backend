@@ -5,7 +5,7 @@ from sqlalchemy.orm import joinedload
 
 FULL_ACCESS_ROLES = ["admin", "superadmin", "manager"]
 
-def get_po_list(db, user, status=None, page=1, limit=20, factory_id=None):
+def get_po_list(db, user, status=None, page=1, limit=10000, factory_id=None):
 
     query = db.query(PurchaseOrder, Vendor).options(
         joinedload(PurchaseOrder.factory)

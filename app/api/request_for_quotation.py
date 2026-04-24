@@ -125,3 +125,16 @@ def get_vendors(
         return get_rfq_vendors(db, rfq_id, user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/{rfq_id}/send-email")
+async def send_rfq_emails(
+    rfq_id: UUID,
+    vendor_ids: List[UUID],
+    db: Session = Depends(get_db),
+    user=Depends(get_current_user)
+):
+    try:
+        return await send_emails_to_vendors(db, rfq_id, vendor_ids, user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
