@@ -58,23 +58,65 @@ def submit_grn_api(
 # ============================================
 # LIST GRN
 # ============================================
+# @router.get("/")
+# def list_grn(
+#     db: Session = Depends(get_db),
+#     user=Depends(get_current_user),
+#     skip: int = 0,
+#     limit: int = 20,
+#     factory_id: str | None = None
+# ):
+#     query = db.query(GRN).filter(GRN.company_id == user.company_id)
+
+#     # 🔥 FACTORY FILTER FROM USER ACCESS
+#     if user.role.lower() not in FULL_ACCESS_ROLES:
+#         query = query.filter(GRN.factory_id.in_(user.factory_ids))
+
+#     # 🔥 FACTORY FILTER FROM DROPDOWN
+#     if factory_id:
+#         query = query.filter(GRN.factory_id == factory_id)
+
+#     total = query.count()
+
+#     records = query.order_by(GRN.created_at.desc()).offset(skip).limit(limit).all()
+
+#     return {
+#         "total": total,
+#         "data": [
+#             {
+#                 "id": grn.id,
+#                 "grn_number": grn.grn_number,
+#                 "status": grn.status,
+#                 "created_at": grn.created_at,
+#                 "factory_name": grn.factory.name if grn.factory else None,
+#                 "plot_no": grn.po.plot_no if grn.po else None
+#             }
+#             for grn in records
+#         ]
+#     }
+
 @router.get("/")
 def list_grn(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    status: str | None = None,
     skip: int = 0,
     limit: int = 20,
     factory_id: str | None = None
 ):
     query = db.query(GRN).filter(GRN.company_id == user.company_id)
 
-    # 🔥 FACTORY FILTER FROM USER ACCESS
+    # FACTORY FILTER FROM USER ACCESS
     if user.role.lower() not in FULL_ACCESS_ROLES:
         query = query.filter(GRN.factory_id.in_(user.factory_ids))
 
-    # 🔥 FACTORY FILTER FROM DROPDOWN
+    # FACTORY FILTER FROM DROPDOWN
     if factory_id:
         query = query.filter(GRN.factory_id == factory_id)
+
+    # STATUS FILTER (NEW ADDITION)
+    if status and status.upper() != "ALL":
+        query = query.filter(GRN.status == status.upper())
 
     total = query.count()
 
