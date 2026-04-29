@@ -33,6 +33,7 @@ class PurchaseOrder(Base):
     # DRAFT | RELEASED | CLOSED | CANCELLED
 
     total_amount = Column(Numeric(16, 2))
+    subtotal = Column(Numeric(14, 2), default=0)
 
 
     vendor_address = Column(String)
@@ -77,6 +78,7 @@ class PurchaseOrder(Base):
     # 🔷 IGST (NEW)
     igst_percent = Column(Numeric(5, 2), default=0)
     igst_amount = Column(Numeric(16, 2), default=0)
+    additional_charges_total = Column(Numeric(14, 2), default=0)
 
     created_by = Column(UUID(as_uuid=True), nullable=False)
     created_at = Column(DateTime, server_default=func.now())

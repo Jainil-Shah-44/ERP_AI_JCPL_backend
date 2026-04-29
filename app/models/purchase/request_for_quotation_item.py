@@ -18,7 +18,9 @@ class RequestForQuotationItem(Base):
     material_id = Column(UUID(as_uuid=True), nullable=False)
     material_code = Column(String(50))
     material_name = Column(String(255))
-
+    material_specification = Column(String(255), nullable=True)
+    material_description = Column(String, nullable=True)
+    
     quantity = Column(Numeric(14,3), nullable=False)
     unit_id = Column(UUID(as_uuid=True), nullable=False)
 

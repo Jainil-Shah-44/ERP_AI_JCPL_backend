@@ -17,9 +17,9 @@ class POManualItem(BaseModel):
     hsn_code: Optional[str] = None
     weight: Optional[Decimal] = None
 
-
-from typing import Optional
-from uuid import UUID
+class POCharge(BaseModel):
+    title: str
+    amount: Decimal
 
 class POManualCreate(BaseModel):
     vendor_id: UUID
@@ -50,8 +50,10 @@ class POManualCreate(BaseModel):
     # ✅ TAX
     sgst_percent: Decimal
     cgst_percent: Decimal
-
+    charges: list[POCharge] = []
+    
     tax_type: str  # "GST" or "IGST"
     igst_percent: Optional[Decimal] = 0
 
     items: List[POManualItem]
+

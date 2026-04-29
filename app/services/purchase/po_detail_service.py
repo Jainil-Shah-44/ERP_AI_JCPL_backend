@@ -3,6 +3,7 @@ from app.models.purchase.purchase_order import PurchaseOrder, PurchaseOrderItem
 from app.models.vendor import Vendor
 from app.models.factory import Factory
 from app.models.unit import Unit
+from app.models.purchase.purchase_order_charges import PurchaseOrderCharge
 
 
 def get_po_detail(db: Session, po_id, user):
@@ -31,6 +32,10 @@ def get_po_detail(db: Session, po_id, user):
             Factory.id == po.factory_id
         ).first()
 
+    charges = db.query(PurchaseOrderCharge).filter(
+            PurchaseOrderCharge.po_id == po.id
+        ).all()
+
    
 
     # 🔹 Items
@@ -42,6 +47,9 @@ def get_po_detail(db: Session, po_id, user):
 
     units = db.query(Unit).filter(Unit.id.in_(unit_ids)).all()
     unit_map = {u.id: u.unit_code for u in units}
+
+    # 🔹 Calculate subtotal
+    subtotal = sum([float(item.amount or 0) for item in items])
 
     
     return {
@@ -75,12 +83,22 @@ def get_po_detail(db: Session, po_id, user):
         # 🔹 Tax
         "sgst_percent": float(po.sgst_percent or 0),
         "cgst_percent": float(po.cgst_percent or 0),
+        "subtotal": float(subtotal),
         "sgst_amount": float(po.sgst_amount or 0),
         "cgst_amount": float(po.cgst_amount or 0),
         "total_amount": float(po.total_amount or 0),
         "tax_type": po.tax_type,
         "igst_percent": float(po.igst_percent or 0),
         "igst_amount": float(po.igst_amount or 0),
+        "additional_charges_total": float(po.additional_charges_total or 0),
+        "charges": [
+            {
+                "id": c.id,
+                "title": c.title,
+                "amount": float(c.amount or 0)
+            }
+            for c in charges
+        ],
 
         # 🔹 Meta
         "status": po.status,

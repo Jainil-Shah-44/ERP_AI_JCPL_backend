@@ -12,6 +12,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 import io
 import re
+from app.models.purchase.purchase_order_charges import PurchaseOrderCharge
 
 def create_watermark(watermark_path):
     packet = io.BytesIO()
@@ -71,6 +72,21 @@ def generate_po_pdf(db, po_id, user):
             PurchaseOrderItem.po_id == po_obj.id
         ).all()
 
+        subtotal = getattr(po_obj, "subtotal", None)
+
+        if subtotal is None or float(subtotal) == 0:
+            subtotal = sum([
+                (i.quantity or 0) * (i.rate or 0)
+                for i in items
+            ])
+        
+        charges = db.query(PurchaseOrderCharge).filter(
+                PurchaseOrderCharge.po_id == po_obj.id
+            ).all()
+        
+
+        
+
         po = {
             "po_number": po_obj.po_number,
             "po_date": po_obj.po_date,
@@ -90,11 +106,20 @@ def generate_po_pdf(db, po_id, user):
             "factory_gstin": po_obj.factory_gstin,
             "sgst_percent": float(po_obj.sgst_percent or 0),
             "cgst_percent": float(po_obj.cgst_percent or 0),
+            "subtotal": float(subtotal),
             "sgst_amount": float(po_obj.sgst_amount or 0),
             "cgst_amount": float(po_obj.cgst_amount or 0),
+            "additional_charges_total": float(getattr(po_obj, "additional_charges_total", 0) or 0),
             "tax_type": po_obj.tax_type,
             "igst_percent": float(po_obj.igst_percent or 0),
             "igst_amount": float(po_obj.igst_amount or 0),
+            "charges": [
+                {
+                    "title": c.title,
+                    "amount": float(c.amount or 0)
+                }
+                for c in charges
+            ],
             "total_amount": float(po_obj.total_amount or 0),
             "other_instructions": po_obj.other_instructions,
             "items": [
@@ -143,7 +168,7 @@ def generate_po_pdf(db, po_id, user):
         <tr>
             <td></td>
             <td>IGST ({po.get('igst_percent', 0)}%)</td>
-            <td class="right">{po.get('igst_amount', 0)}</td>
+            <td class="right">{po.get('igst_amount', 0):.2f}</td>
         </tr>
         """
     else:
@@ -151,12 +176,23 @@ def generate_po_pdf(db, po_id, user):
         <tr>
             <td></td>
             <td>SGST ({po.get('sgst_percent', 0)}%)</td>
-            <td class="right">{po.get('sgst_amount', 0)}</td>
+            <td class="right">{po.get('sgst_amount', 0):.2f}</td>
         </tr>
         <tr>
             <td></td>
             <td>CGST ({po.get('cgst_percent', 0)}%)</td>
-            <td class="right">{po.get('cgst_amount', 0)}</td>
+            <td class="right">{po.get('cgst_amount', 0):.2f}</td>
+        </tr>
+        """
+
+    charges_rows = ""
+
+    for c in po.get("charges", []):
+        charges_rows += f"""
+        <tr>
+            <td></td>
+            <td>{c['title']}</td>
+            <td class="right">{c['amount']:.2f}</td>
         </tr>
         """
 
@@ -275,6 +311,10 @@ def generate_po_pdf(db, po_id, user):
 
     .logo {{
         width: 130px;
+    }}
+
+    .summary-row td {{
+        font-weight: bold;
     }}
 
     .company-container {{
@@ -433,8 +473,8 @@ def generate_po_pdf(db, po_id, user):
     <span class="small-text">HSN: {i.get('hsn_code','')}</span>
     </td>
     <td class="center">{i['quantity']}</td>
-    <td class="right">{i['rate']}</td>
-    <td class="right">{i['amount']}</td>
+    <td class="right">{i['rate']:.2f}</td>
+    <td class="right">{i['amount']:.2f}</td>
     </tr>
     '''
     for idx, i in enumerate(po['items'])
@@ -445,12 +485,34 @@ def generate_po_pdf(db, po_id, user):
     <!-- TAX + TOTAL -->
     <table>
 
-    {tax_rows}
+    <tr class="summary-row">
+        <td></td>
+        <td><b>SUBTOTAL</b></td>
+        <td class="right">{po.get('subtotal', 0):.2f}</td>
+    </tr>
+
+    {charges_rows}
 
     <tr>
-    <td></td>
-    <td><b>TOTAL</b></td>
-    <td class="right"><b>{round(po['total_amount'])}</b></td>
+        <td></td>
+        <td><b>ADDITIONAL CHARGES</b></td>
+        <td class="right">{po.get('additional_charges_total', 0):.2f}</td>
+    </tr>
+
+    <tr class="summary-row">
+        <td></td>
+        <td><b>TAXABLE AMOUNT</b></td>
+        <td class="right">
+            {(po.get('subtotal', 0) + po.get('additional_charges_total', 0)):.2f}
+        </td>
+    </tr>
+
+    {tax_rows}
+
+    <tr class="summary-row">
+        <td></td>
+        <td><b>TOTAL</b></td>
+        <td class="right"><b>{round(po['total_amount'])}</b></td>
     </tr>
 
     </table>

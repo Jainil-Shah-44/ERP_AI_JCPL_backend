@@ -5,7 +5,7 @@ from app.models.vendor import Vendor
 from app.models.factory import Factory
 from app.models.unit import Unit
 from app.services.purchase.po_number_service import generate_po_number
-
+from app.models.purchase.purchase_order_charges import PurchaseOrderCharge
 
 def create_manual_po(db: Session, payload, user):
 
@@ -80,7 +80,7 @@ def create_manual_po(db: Session, payload, user):
         db.flush()
 
         # 💰 Totals
-        total = Decimal("0.00")
+        subtotal = Decimal("0.00")
 
         unit_ids = [item.unit_id for item in payload.items if item.unit_id]
 
@@ -99,7 +99,7 @@ def create_manual_po(db: Session, payload, user):
 
             amount = (quantity * rate).quantize(Decimal("0.01"))
             
-            total += amount
+            subtotal += amount
 
             # 🔍 Unit name fetch (fallback)
             unit_name = item.unit_name or unit_map.get(item.unit_id, "")
@@ -129,11 +129,29 @@ def create_manual_po(db: Session, payload, user):
             ))
 
         # 🧾 Tax calculation (NEW)
+        po.subtotal = subtotal
+
+        additional_total = Decimal("0.00")
+
+        for charge in payload.charges or []:
+            amount = Decimal(charge.amount).quantize(Decimal("0.01"))
+
+            additional_total += amount
+
+            db.add(PurchaseOrderCharge(
+                po_id=po.id,
+                title=charge.title,
+                amount=amount
+            ))
+
+        po.additional_charges_total = additional_total
 
         po.tax_type = payload.tax_type
+        taxable_amount = subtotal + additional_total
 
         if payload.tax_type == "IGST":
-            igst_amount = (total * payload.igst_percent / Decimal("100")).quantize(Decimal("0.01"))
+            
+            igst_amount = (taxable_amount * payload.igst_percent / Decimal("100")).quantize(Decimal("0.01"))
 
             po.igst_percent = payload.igst_percent
             po.igst_amount = igst_amount
@@ -143,11 +161,11 @@ def create_manual_po(db: Session, payload, user):
             po.sgst_amount = Decimal("0")
             po.cgst_amount = Decimal("0")
 
-            po.total_amount = (total + igst_amount).quantize(Decimal("0.01"))
+            po.total_amount = (taxable_amount + igst_amount).quantize(Decimal("0.01"))
 
         else:  # GST
-            sgst_amount = (total * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
-            cgst_amount = (total * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+            sgst_amount = (taxable_amount * payload.sgst_percent / Decimal("100")).quantize(Decimal("0.01"))
+            cgst_amount = (taxable_amount * payload.cgst_percent / Decimal("100")).quantize(Decimal("0.01"))
 
             po.sgst_percent = payload.sgst_percent
             po.cgst_percent = payload.cgst_percent
@@ -157,7 +175,11 @@ def create_manual_po(db: Session, payload, user):
             po.igst_percent = Decimal("0")
             po.igst_amount = Decimal("0")
 
-            po.total_amount = (total + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
+            po.total_amount = (taxable_amount + sgst_amount + cgst_amount).quantize(Decimal("0.01"))
+
+        
+        
+
         db.commit()
 
         return {

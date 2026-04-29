@@ -80,7 +80,7 @@ def get_pr_detail(db: Session, pr_id, user):
                 "material_code": i.material_code,
                 "material_name": i.material_name,
 
-                "requested_qty": float(i.requested_qty),
+                "requested_qty": float(i.requested_qty or 0),
                 "approved_qty": float(i.approved_qty or 0),
 
                 "unit_id": i.unit_id,
